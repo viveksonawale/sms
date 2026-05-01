@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Sun, Moon, Globe, Bell, User, LogOut, Settings, ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
+import { Menu, Sun, Moon, Globe, User, LogOut, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 

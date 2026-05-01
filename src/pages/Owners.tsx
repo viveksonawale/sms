@@ -1,14 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, Plus, Users, ChevronRight, Building2 } from 'lucide-react';
+import { Search, Plus, Users, ChevronRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export default function Owners() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const owners = useStore((state) => state.owners);
-  const payments = useStore((state) => state.payments);
   const language = useStore((state) => state.language);
   const theme = useStore((state) => state.theme);
 

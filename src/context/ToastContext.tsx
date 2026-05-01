@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { CheckCircle2, XCircle, AlertCircle, X } from 'lucide-react';
+import { Check, XCircle, AlertCircle, X } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -17,7 +17,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 const toastConfig = {
   success: {
-    icon: <CheckCircle2 size={17} style={{ color: '#22c55e', flexShrink: 0 }} />,
+    icon: <Check size={17} style={{ color: '#22c55e', flexShrink: 0 }} />,
     bar: '#22c55e',
     bg: '#ffffff',
     border: 'rgba(34,197,94,0.2)',

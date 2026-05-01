@@ -86,10 +86,11 @@ html.dark .card {
   white-space: nowrap;
 }
 .btn-primary:hover {
-  background-color: #007867;
-  box-shadow: rgba(0, 120, 103, 0.4) 0px 8px 16px 0px;
+  background-color: #008f5d;
+  transform: translateY(-1px);
+  box-shadow: rgba(0, 167, 111, 0.32) 0px 12px 20px -4px;
 }
-.btn-primary:active { transform: scale(0.98); }
+.btn-primary:active { transform: translateY(0); }
 .btn-primary:disabled {
   opacity: 0.48;
   cursor: not-allowed;
@@ -113,10 +114,10 @@ html.dark .card {
 }
 .btn-ghost:hover {
   background-color: rgba(0, 167, 111, 0.08);
-  border-color: #00a76f;
+  transform: translateY(-1px);
 }
 html.dark .btn-ghost { color: #5be49b; border-color: rgba(91, 228, 155, 0.48); }
-html.dark .btn-ghost:hover { background-color: rgba(91, 228, 155, 0.08); border-color: #5be49b; }
+html.dark .btn-ghost:hover { background-color: rgba(91, 228, 155, 0.12); }
 
 .btn-dark {
   background-color: #1c252e;
@@ -133,9 +134,12 @@ html.dark .btn-ghost:hover { background-color: rgba(91, 228, 155, 0.08); border-
   gap: 8px;
   transition: background-color 0.15s ease;
 }
-.btn-dark:hover { background-color: #141a21; }
+.btn-dark:hover {
+  background-color: #232d38;
+  transform: translateY(-1px);
+}
 html.dark .btn-dark { background-color: #f9fafb; color: #1c252e; }
-html.dark .btn-dark:hover { background-color: #dfe3e8; }
+html.dark .btn-dark:hover { background-color: #ffffff; transform: translateY(-1px); }
 
 .btn-white {
   background-color: #ffffff;
@@ -152,9 +156,17 @@ html.dark .btn-dark:hover { background-color: #dfe3e8; }
   gap: 6px;
   transition: all 0.15s ease;
 }
-.btn-white:hover { background-color: #f4f6f8; }
+.btn-white:hover {
+  background-color: #f4f6f8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.04);
+}
 html.dark .btn-white { background-color: #28343f; border-color: #3d4e5c; color: #c4cdd5; }
-html.dark .btn-white:hover { background-color: #344050; color: #ffffff; }
+html.dark .btn-white:hover {
+  background-color: #313d49;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
 
 /* =========================================
    INPUTS & FORMS

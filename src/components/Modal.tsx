@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
+import { useStore } from '../store/useStore';
 
 interface ModalProps {
   isOpen: boolean;
@@ -24,13 +26,22 @@ export default function Modal({
   danger = false,
   children,
 }: ModalProps) {
+  const theme = useStore((state) => state.theme);
+  const isDark = theme === 'dark';
+
   if (!isOpen) return null;
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+  const bgColor = isDark ? '#1c252e' : '#ffffff';
+  const textPrimary = isDark ? '#ffffff' : '#1c252e';
+  const textSecondary = isDark ? '#919eab' : '#637381';
+  const btnSecondaryBg = isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8';
+  const btnSecondaryHover = isDark ? 'rgba(255,255,255,0.1)' : '#dfe3e8';
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       {/* Backdrop */}
       <div
-        style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+        style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
         onClick={onClose}
       />
 
@@ -39,9 +50,11 @@ export default function Modal({
         style={{
           position: 'relative', zIndex: 10,
           width: '100%', maxWidth: '420px',
-          backgroundColor: '#ffffff',
+          backgroundColor: bgColor,
           borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          boxShadow: isDark 
+            ? '0 0 2px 0 rgba(0,0,0,0.3), 0 12px 24px -4px rgba(0,0,0,0.2)'
+            : '0 25px 50px -12px rgba(0,0,0,0.25)',
           overflow: 'hidden',
           animation: 'modalIn 0.2s ease both',
         }}
@@ -67,7 +80,7 @@ export default function Modal({
               >
                 <AlertTriangle size={18} style={{ color: danger ? '#ff5630' : '#00a76f' }} />
               </div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1c252e', lineHeight: 1.3 }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary, lineHeight: 1.3 }}>
                 {title}
               </h3>
             </div>
@@ -75,7 +88,7 @@ export default function Modal({
               onClick={onClose}
               style={{
                 padding: '4px', background: 'none', border: 'none', cursor: 'pointer',
-                color: '#919eab', borderRadius: '6px',
+                color: textSecondary, borderRadius: '6px',
               }}
             >
               <X size={18} />
@@ -86,7 +99,7 @@ export default function Modal({
             children
           ) : (
             <>
-              <p style={{ fontSize: '14px', color: '#637381', lineHeight: 1.6, marginBottom: '24px' }}>
+              <p style={{ fontSize: '14px', color: textSecondary, lineHeight: 1.6, marginBottom: '24px' }}>
                 {message}
               </p>
 
@@ -96,11 +109,11 @@ export default function Modal({
                   style={{
                     padding: '8px 20px', borderRadius: '8px',
                     fontSize: '14px', fontWeight: 600, cursor: 'pointer',
-                    backgroundColor: '#f4f6f8', border: 'none', color: '#637381',
+                    backgroundColor: btnSecondaryBg, border: 'none', color: textSecondary,
                     transition: 'background-color 0.15s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#dfe3e8')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f4f6f8')}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = btnSecondaryHover)}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = btnSecondaryBg)}
                 >
                   {cancelLabel}
                 </button>
@@ -133,6 +146,7 @@ export default function Modal({
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }

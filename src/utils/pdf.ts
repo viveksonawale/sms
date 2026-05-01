@@ -6,126 +6,159 @@ const PRIMARY = '#2F8D46';
 const SECONDARY = '#1F1F1F';
 const NEUTRAL = '#5F6368';
 
-export const generateReceiptPDF = (payment: Payment, owner: Owner) => {
+export const generateReceiptPDF = (
+  payment: Payment,
+  owner: Owner,
+  societyName: string
+) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 20;
+  let y = 20;
 
-  // Society Name
+  // ================= HEADER =================
   doc.setFont('courier', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setTextColor(SECONDARY);
-  doc.text('SHREE GANESH SOCIETY', pageW / 2, 18, { align: 'center' });
+  doc.text(societyName.toUpperCase(), pageW / 2, y, { align: 'center' });
 
-  // Receipt sub-heading
+  y += 8;
+
   doc.setFont('courier', 'normal');
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setTextColor(SECONDARY);
-  doc.text('MAINTENANCE RECEIPT', pageW / 2, 27, { align: 'center' });
+  doc.text('MAINTENANCE RECEIPT', pageW / 2, y, { align: 'center' });
 
-  // Receipt number badge in header
-  doc.setFont('courier', 'bold');
+  y += 6;
+
   doc.setFontSize(10);
   doc.setTextColor(NEUTRAL);
-  doc.text(`RCP-${payment.receiptNumber}`, pageW / 2, 37, { align: 'center' });
+  doc.text(`Receipt No: ${payment.receiptNumber}`, pageW / 2, y, {
+    align: 'center',
+  });
 
-  // === DIVIDER ===
-  let y = 45;
-  doc.setDrawColor(47, 141, 70); // #2F8D46
-  doc.setLineWidth(1.5);
+  y += 10;
+
+  // Divider
+  doc.setDrawColor(PRIMARY);
+  doc.setLineWidth(1);
   doc.line(margin, y, pageW - margin, y);
-  y += 15;
 
-  // === BODY FIELDS ===
-  const drawField = (label: string, value: string, x: number, cy: number) => {
+  y += 12;
+
+  // ================= FIELD HELPER =================
+  const drawField = (label: string, value: string, x: number, yPos: number) => {
     doc.setFont('courier', 'normal');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(NEUTRAL);
-    doc.text(label.toUpperCase(), x, cy);
+    doc.text(label.toUpperCase(), x, yPos);
 
-    doc.setFont('courier', 'normal');
-    doc.setFontSize(12);
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(11);
     doc.setTextColor(SECONDARY);
-    doc.text(value, x, cy + 6);
+    doc.text(value, x, yPos + 5);
   };
 
-  // Row 1: Receipt No + Date
-  drawField('Receipt Number', `RCP-${payment.receiptNumber}`, margin, y);
-  drawField('Date', format(new Date(payment.paidOn), 'dd MMMM yyyy'), pageW / 2, y);
-  y += 22;
+  const col1 = margin;
+  const col2 = pageW / 2 + 10;
 
-  // Divider line
-  doc.setDrawColor(224, 224, 224); // #E0E0E0
+  // ================= DETAILS =================
+  // Row 1
+  drawField('Receipt Number', String(payment.receiptNumber), col1, y);
+  drawField('Date', format(new Date(payment.paidOn), 'dd MMM yyyy'), col2, y);
+
+  y += 14;
+
+  // Row 2
+  drawField('Received From', owner.name, col1, y);
+  drawField('Flat No.', owner.flat, col2, y);
+
+  y += 14;
+
+  // Row 3
+  drawField('For Month', payment.month, col1, y);
+  drawField('Contact', `+${owner.phone}`, col2, y);
+
+  y += 14;
+
+  // Thin Divider
+  doc.setDrawColor(224, 224, 224);
   doc.setLineWidth(0.3);
   doc.line(margin, y, pageW - margin, y);
-  y += 10;
 
-  // Row 2: Owner Name + Flat
-  drawField('Received From', owner.name, margin, y);
-  drawField('Flat No.', owner.flat, pageW / 2, y);
-  y += 22;
+  y += 16;
 
-  doc.line(margin, y, pageW - margin, y);
-  y += 10;
+  // ================= AMOUNT BOX =================
+  const boxWidth = 90;
+  const boxHeight = 28;
+  const boxX = (pageW - boxWidth) / 2;
 
-  // Row 3: Month + Phone
-  drawField('For the Month of', payment.month, margin, y);
-  drawField('Contact', `+${owner.phone}`, pageW / 2, y);
-  y += 22;
+  // Light background
+  doc.setFillColor(249, 249, 249);
+  doc.roundedRect(boxX, y, boxWidth, boxHeight, 3, 3, 'F');
 
-  doc.line(margin, y, pageW - margin, y);
-  y += 10;
-
-  // === AMOUNT BOX ===
-  const boxY = y;
-  doc.setFillColor(249, 249, 249); // #F9F9F9
-  doc.roundedRect(margin, boxY, pageW - margin * 2, 24, 3, 3, 'F');
+  // Primary border
   doc.setDrawColor(PRIMARY);
   doc.setLineWidth(0.5);
-  doc.roundedRect(margin, boxY, pageW - margin * 2, 24, 3, 3, 'S');
+  doc.roundedRect(boxX, y, boxWidth, boxHeight, 3, 3, 'S');
 
+  // Amount label
   doc.setFont('courier', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(NEUTRAL);
-  doc.text('AMOUNT RECEIVED', margin + 8, boxY + 8);
+  doc.text('AMOUNT RECEIVED', pageW / 2, y + 9, { align: 'center' });
 
+  // Amount value (centered, strong emphasis, no spaces, no /-)
   doc.setFont('courier', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(22);
   doc.setTextColor(PRIMARY);
-  doc.text(`\u20B9${payment.amount.toLocaleString('en-IN')}/-`, margin + 8, boxY + 19);
+  doc.text(`₹${payment.amount}`, pageW / 2, y + 20, { align: 'center' });
 
-  doc.setFont('courier', 'italic');
-  doc.setFontSize(10);
-  doc.setTextColor(NEUTRAL);
-  doc.text('Society Maintenance Payment', pageW - margin - 5, boxY + 14, { align: 'right' });
+  y += boxHeight + 12;
 
-  y = boxY + 35;
+  // ================= STATUS =================
+  const badgeWidth = 32;
+  const badgeHeight = 9;
+  const badgeX = (pageW - badgeWidth) / 2;
 
-  // === STATUS BADGE ===
-  doc.setFillColor(232, 245, 233); // #E8F5E9
-  doc.roundedRect(margin, y, 35, 9, 2, 2, 'F');
+  // Light green pill background
+  doc.setFillColor(232, 245, 233);
+  doc.roundedRect(badgeX, y, badgeWidth, badgeHeight, 4.5, 4.5, 'F');
+
+  // Text "PAID"
   doc.setFont('courier', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(47, 141, 70); // #2F8D46
-  doc.text('✓  PAID', margin + 5, y + 6);
+  doc.setTextColor(PRIMARY);
+  doc.text('PAID', pageW / 2, y + 6, { align: 'center' });
 
-  y += 20;
+  y += 24;
 
-  // === FOOTER ===
+  // ================= FOOTER =================
+  // Thin primary divider
   doc.setDrawColor(PRIMARY);
-  doc.setLineWidth(0.8);
+  doc.setLineWidth(0.5);
   doc.line(margin, y, pageW - margin, y);
+
   y += 8;
 
   doc.setFont('courier', 'italic');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(NEUTRAL);
-  doc.text('Thank you for your timely payment.', pageW / 2, y, { align: 'center' });
+  doc.text('Thank you for your timely payment.', pageW / 2, y, {
+    align: 'center',
+  });
 
-  y += 7;
+  y += 6;
+
   doc.setFontSize(8);
-  doc.text(`Generated on: ${format(new Date(), 'dd MMM yyyy, HH:mm')}`, pageW / 2, y, { align: 'center' });
+  doc.text(
+    `Generated on: ${format(new Date(), 'dd MMM yyyy, HH:mm')}`,
+    pageW / 2,
+    y,
+    { align: 'center' }
+  );
 
-  doc.save(`${payment.receiptNumber}.pdf`);
+  // ================= SAVE =================
+  doc.save(`Receipt_${payment.receiptNumber}.pdf`);
 };

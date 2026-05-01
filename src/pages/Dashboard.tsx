@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
-import { Search, Plus, Users, CheckCircle2, Clock, IndianRupee, ChevronRight, Building2 } from 'lucide-react';
+import { Search, Plus, Users, Check, Clock, IndianRupee, ChevronRight, Building2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export default function Dashboard() {
@@ -51,7 +51,7 @@ export default function Dashboard() {
     {
       label: t('paidThisMonth'),
       value: String(stats.paidThisMonth),
-      icon: CheckCircle2,
+      icon: Check,
       iconColor: '#22c55e',
       iconBg: 'rgba(34, 197, 94, 0.12)',
       trend: `Out of ${stats.totalOwners}`,

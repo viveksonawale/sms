@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, Settings as SettingsIcon, LogOut, X, Users, UserPlus, TrendingUp, Receipt } from 'lucide-react';
+import { LayoutDashboard, Settings as SettingsIcon, LogOut, X, Users, TrendingUp, Receipt } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 interface SidebarProps {

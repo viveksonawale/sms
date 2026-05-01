@@ -53,6 +53,8 @@ interface StoreState {
   updateOwner: (id: string, updated: Partial<Owner>) => void;
   deleteOwner: (id: string) => void;
   addPayment: (payment: Payment) => void;
+  updatePayment: (id: string, updated: Partial<Payment>) => void;
+  deletePayment: (id: string) => void;
   nextReceiptNumber: () => string;
   addExpense: (expense: Expense) => void;
   updateExpense: (id: string, updated: Partial<Expense>) => void;
@@ -111,6 +113,14 @@ export const useStore = create<StoreState>()(
         })),
       addPayment: (payment) =>
         set((state) => ({ payments: [...state.payments, payment] })),
+      updatePayment: (id, updated) =>
+        set((state) => ({
+          payments: state.payments.map((p) => (p.id === id ? { ...p, ...updated } : p)),
+        })),
+      deletePayment: (id) =>
+        set((state) => ({
+          payments: state.payments.filter((p) => p.id !== id),
+        })),
       nextReceiptNumber: () => {
         // Pure read — counter incremented separately via addPayment wrapper
         const counter = get().receiptCounter;
