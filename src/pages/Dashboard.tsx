@@ -20,7 +20,6 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     let paidThisMonth = 0;
     let pending = 0;
-    let totalCollected = 0;
     owners.forEach((owner) => {
       const hasPaid = payments.some(
         (p) => p.ownerId === owner.id && p.month === currentMonthStr && p.status === 'paid'
@@ -28,7 +27,7 @@ export default function Dashboard() {
       if (hasPaid) paidThisMonth++;
       else pending++;
     });
-    totalCollected = payments.reduce((acc, curr) => acc + curr.amount, 0);
+    const totalCollected = payments.reduce((acc, curr) => acc + curr.amount, 0);
     return { totalOwners: owners.length, paidThisMonth, pending, totalCollected };
   }, [owners, payments, currentMonthStr]);
 

@@ -4,6 +4,51 @@ import { Sun, Moon, Globe, Building2, Save, Info } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useToast } from '../context/ToastContext';
 
+const SectionCard = ({
+  icon, iconBg, title, subtitle, children, cardBg, textPrimary, textSecondary, borderColor, cardShadow
+}: {
+  icon: React.ReactNode; iconBg: string;
+  title: string; subtitle: string; children: React.ReactNode;
+  cardBg: string; textPrimary: string; textSecondary: string; borderColor: string; cardShadow: string;
+}) => (
+  <div style={{ backgroundColor: cardBg, borderRadius: '12px', padding: '24px', boxShadow: cardShadow }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px', paddingBottom: '18px', borderBottom: `1px solid ${borderColor}` }}>
+      <div style={{
+        width: '40px', height: '40px', borderRadius: '10px',
+        backgroundColor: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {icon}
+      </div>
+      <div>
+        <h2 style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>{title}</h2>
+        <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>{subtitle}</p>
+      </div>
+    </div>
+    {children}
+  </div>
+);
+
+const ToggleBtn = ({
+  active, onClick, id, children, isDark, textSecondary
+}: { active: boolean; onClick: () => void; id?: string; children: React.ReactNode; isDark: boolean; textSecondary: string }) => (
+  <button
+    id={id}
+    onClick={onClick}
+    style={{
+      flex: 1,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+      padding: '11px 16px', borderRadius: '8px', cursor: 'pointer',
+      fontSize: '14px', fontWeight: 700,
+      border: `2px solid ${active ? '#00a76f' : (isDark ? 'rgba(255,255,255,0.08)' : '#dfe3e8')}`,
+      backgroundColor: active ? 'rgba(0,167,111,0.1)' : 'transparent',
+      color: active ? '#00a76f' : textSecondary,
+      transition: 'all 0.15s ease',
+    }}
+  >
+    {children}
+  </button>
+);
+
 export default function Settings() {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -31,49 +76,7 @@ export default function Settings() {
     toast(t('societyNameUpdated'), 'success');
   };
 
-  const SectionCard = ({
-    icon, iconBg, title, subtitle, children,
-  }: {
-    icon: React.ReactNode; iconBg: string;
-    title: string; subtitle: string; children: React.ReactNode;
-  }) => (
-    <div style={{ backgroundColor: cardBg, borderRadius: '12px', padding: '24px', boxShadow: cardShadow }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px', paddingBottom: '18px', borderBottom: `1px solid ${borderColor}` }}>
-        <div style={{
-          width: '40px', height: '40px', borderRadius: '10px',
-          backgroundColor: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {icon}
-        </div>
-        <div>
-          <h2 style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>{title}</h2>
-          <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>{subtitle}</p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-
-  const ToggleBtn = ({
-    active, onClick, id, children,
-  }: { active: boolean; onClick: () => void; id?: string; children: React.ReactNode }) => (
-    <button
-      id={id}
-      onClick={onClick}
-      style={{
-        flex: 1,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-        padding: '11px 16px', borderRadius: '8px', cursor: 'pointer',
-        fontSize: '14px', fontWeight: 700,
-        border: `2px solid ${active ? '#00a76f' : (isDark ? 'rgba(255,255,255,0.08)' : '#dfe3e8')}`,
-        backgroundColor: active ? 'rgba(0,167,111,0.1)' : 'transparent',
-        color: active ? '#00a76f' : textSecondary,
-        transition: 'all 0.15s ease',
-      }}
-    >
-      {children}
-    </button>
-  );
+  const commonProps = { isDark, cardBg, textPrimary, textSecondary, borderColor, cardShadow };
 
   return (
     <div style={{ maxWidth: '720px', margin: '0 auto' }} className="space-y-6 page-enter">
@@ -85,6 +88,7 @@ export default function Settings() {
 
       {/* Society Name */}
       <SectionCard
+        {...commonProps}
         icon={<Building2 size={18} style={{ color: '#00a76f' }} />}
         iconBg="rgba(0,167,111,0.12)"
         title={t('societyName')}
@@ -108,6 +112,7 @@ export default function Settings() {
 
       {/* Theme */}
       <SectionCard
+        {...commonProps}
         icon={
           isDark
             ? <Moon size={18} style={{ color: '#00b8d9' }} />
@@ -118,11 +123,11 @@ export default function Settings() {
         subtitle={t('personalizeInterface')}
       >
         <div style={{ display: 'flex', gap: '12px' }}>
-          <ToggleBtn id="theme-light" active={theme === 'light'} onClick={() => setTheme('light')}>
+          <ToggleBtn isDark={isDark} textSecondary={textSecondary} id="theme-light" active={theme === 'light'} onClick={() => setTheme('light')}>
             <Sun size={15} />
             {t('lightMode')}
           </ToggleBtn>
-          <ToggleBtn id="theme-dark" active={theme === 'dark'} onClick={() => setTheme('dark')}>
+          <ToggleBtn isDark={isDark} textSecondary={textSecondary} id="theme-dark" active={theme === 'dark'} onClick={() => setTheme('dark')}>
             <Moon size={15} />
             {t('darkMode')}
           </ToggleBtn>
@@ -131,6 +136,7 @@ export default function Settings() {
 
       {/* Language */}
       <SectionCard
+        {...commonProps}
         icon={<Globe size={18} style={{ color: '#8e33ff' }} />}
         iconBg="rgba(142,51,255,0.12)"
         title={t('language')}
@@ -138,6 +144,8 @@ export default function Settings() {
       >
         <div style={{ display: 'flex', gap: '12px' }}>
           <ToggleBtn
+            isDark={isDark}
+            textSecondary={textSecondary}
             id="lang-en"
             active={language === 'en'}
             onClick={() => { setLanguage('en'); i18n.changeLanguage('en'); }}
@@ -145,6 +153,8 @@ export default function Settings() {
             🇬🇧 English
           </ToggleBtn>
           <ToggleBtn
+            isDark={isDark}
+            textSecondary={textSecondary}
             id="lang-mr"
             active={language === 'mr'}
             onClick={() => { setLanguage('mr'); i18n.changeLanguage('mr'); }}

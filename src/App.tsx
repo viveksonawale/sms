@@ -1,22 +1,45 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useStore } from './store/useStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import Layout from './components/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Owners from './pages/Owners';
-import OwnerDetail from './pages/OwnerDetail';
-import AddOwner from './pages/AddOwner';
-import Settings from './pages/Settings';
-import Expenses from './pages/Expenses';
-import AddExpense from './pages/AddExpense';
+
+// Lazy load pages
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Owners = lazy(() => import('./pages/Owners'));
+const OwnerDetail = lazy(() => import('./pages/OwnerDetail'));
+const AddOwner = lazy(() => import('./pages/AddOwner'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Expenses = lazy(() => import('./pages/Expenses'));
+const AddExpense = lazy(() => import('./pages/AddExpense'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
+}
+
+function LoadingScreen() {
+  const theme = useStore((state) => state.theme);
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: theme === 'dark' ? '#141a21' : '#f9fafb',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: '50%',
+        border: '3px solid rgba(0, 167, 111, 0.2)',
+        borderTop: '3px solid #00a76f',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 }
 
 function App() {
@@ -25,12 +48,9 @@ function App() {
   const { i18n } = useTranslation();
 
   // Wait for Zustand to rehydrate from localStorage before rendering routes.
-  // Without this, ProtectedRoute sees isAuthenticated=false for one frame and
-  // immediately redirects even if the user was logged in.
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // useStore.persist.hasHydrated() is true once localStorage is loaded.
     if (useStore.persist.hasHydrated()) {
       setHydrated(true);
     } else {
@@ -58,50 +78,35 @@ function App() {
     }
   }, [language, i18n]);
 
-  // Show a minimal loading screen while Zustand rehydrates (< 50ms typically)
   if (!hydrated) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        background: theme === 'dark' ? '#141a21' : '#f9fafb',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: '50%',
-          border: '3px solid rgba(0, 167, 111, 0.2)',
-          borderTop: '3px solid #00a76f',
-          animation: 'spin 0.8s linear infinite',
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
     <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<Dashboard />} />
-          <Route path="owners" element={<Owners />} />
-          <Route path="owners/:id" element={<OwnerDetail />} />
-          <Route path="owners/add" element={<AddOwner />} />
-          <Route path="expenses" element={<Expenses />} />
-          <Route path="expenses/add" element={<AddExpense />} />
-          <Route path="expenses/edit/:id" element={<AddExpense />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Dashboard />} />
+            <Route path="owners" element={<Owners />} />
+            <Route path="owners/:id" element={<OwnerDetail />} />
+            <Route path="owners/add" element={<AddOwner />} />
+            <Route path="expenses" element={<Expenses />} />
+            <Route path="expenses/add" element={<AddExpense />} />
+            <Route path="expenses/edit/:id" element={<AddExpense />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Catch-all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
