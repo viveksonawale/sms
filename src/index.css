@@ -1,0 +1,373 @@
+/* =============================================
+   Global styles — Dasher Template Design System
+   Primary: #00a76f | Font: Public Sans
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Public Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f9fafb;
+  color: #1c252e;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.dark body {
+  background-color: #141a21;
+  color: #919eab;
+}
+
+body.lang-mr {
+  font-size: 1.15rem;
+}
+body.lang-mr .text-xs { font-size: 0.85rem; line-height: 1.2rem; }
+body.lang-mr .text-sm { font-size: 1rem; line-height: 1.35rem; }
+body.lang-mr .text-base { font-size: 1.15rem; line-height: 1.6rem; }
+body.lang-mr .text-lg { font-size: 1.25rem; line-height: 1.75rem; }
+body.lang-mr .text-xl { font-size: 1.4rem; line-height: 1.9rem; }
+body.lang-mr .text-2xl { font-size: 1.6rem; line-height: 2rem; }
+
+/* ---- Custom scrollbar (Dasher style) ---- */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c4cdd5; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #919eab; }
+html.dark ::-webkit-scrollbar-thumb { background: #454f5b; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #637381; }
+
+/* Hide number spinners */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Date picker */
+input[type='date']::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+html.dark input[type='date']::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.6); }
+
+/* =========================================
+   CARD — Dasher card style
+   ========================================= */
+.card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  border: none;
+  box-shadow: 0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
+  overflow: hidden;
+}
+html.dark .card {
+  background-color: #1c252e;
+  box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.3), 0 12px 24px -4px rgba(0, 0, 0, 0.2);
+}
+
+/* =========================================
+   BUTTONS
+   ========================================= */
+.btn-primary {
+  background-color: #00a76f;
+  color: #ffffff;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  box-shadow: rgba(0, 167, 111, 0.24) 0px 8px 16px 0px;
+  line-height: 1.57;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background-color: #007867;
+  box-shadow: rgba(0, 120, 103, 0.4) 0px 8px 16px 0px;
+}
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #00a76f;
+  padding: 7px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid rgba(0, 167, 111, 0.48);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.btn-ghost:hover {
+  background-color: rgba(0, 167, 111, 0.08);
+  border-color: #00a76f;
+}
+html.dark .btn-ghost { color: #5be49b; border-color: rgba(91, 228, 155, 0.48); }
+html.dark .btn-ghost:hover { background-color: rgba(91, 228, 155, 0.08); border-color: #5be49b; }
+
+.btn-dark {
+  background-color: #1c252e;
+  color: #ffffff;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.15s ease;
+}
+.btn-dark:hover { background-color: #141a21; }
+html.dark .btn-dark { background-color: #f9fafb; color: #1c252e; }
+html.dark .btn-dark:hover { background-color: #dfe3e8; }
+
+.btn-white {
+  background-color: #ffffff;
+  color: #1c252e;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid #dfe3e8;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.btn-white:hover { background-color: #f4f6f8; }
+html.dark .btn-white { background-color: #28343f; border-color: #3d4e5c; color: #c4cdd5; }
+html.dark .btn-white:hover { background-color: #344050; color: #ffffff; }
+
+/* =========================================
+   INPUTS & FORMS
+   ========================================= */
+.input-field {
+  width: 100%;
+  padding: 9px 14px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #1c252e;
+  font-family: 'Public Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.57;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+.input-field.pl-10 { padding-left: 2.5rem; }
+.input-field.pl-11 { padding-left: 2.75rem; }
+.input-field.pl-9  { padding-left: 2.25rem; }
+.input-field.pr-10 { padding-right: 2.5rem; }
+.input-field::placeholder { color: #919eab; }
+.input-field:focus {
+  border-color: #00a76f;
+  box-shadow: 0 0 0 3px rgba(0, 167, 111, 0.16);
+}
+html.dark .input-field {
+  background-color: #28343f;
+  color: #ffffff;
+  border-color: #3d4e5c;
+}
+html.dark .input-field::placeholder { color: #637381; }
+html.dark .input-field:focus {
+  border-color: #00a76f;
+  box-shadow: 0 0 0 3px rgba(0, 167, 111, 0.2);
+}
+.input-field.error { border-color: #ff5630; }
+.input-field.error:focus { box-shadow: 0 0 0 3px rgba(255, 86, 48, 0.16); }
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #454f5b;
+  margin-bottom: 6px;
+}
+html.dark .label { color: #919eab; }
+
+/* =========================================
+   BADGE
+   ========================================= */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: none;
+  line-height: 1.5;
+}
+.badge-paid {
+  background-color: rgba(34, 197, 94, 0.16);
+  color: #118d57;
+}
+.badge-pending {
+  background-color: rgba(255, 171, 0, 0.16);
+  color: #b76e00;
+}
+html.dark .badge-paid   { background-color: rgba(34, 197, 94, 0.16); color: #77ed8b; }
+html.dark .badge-pending { background-color: rgba(255, 171, 0, 0.16); color: #ffd666; }
+
+/* =========================================
+   SIDEBAR NAV ITEMS
+   ========================================= */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  position: relative;
+}
+.nav-item-active {
+  background-color: rgba(0, 167, 111, 0.16);
+  color: #00a76f;
+}
+.nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background-color: #00a76f;
+  border-radius: 0 4px 4px 0;
+}
+.nav-item-inactive { color: rgba(255, 255, 255, 0.5); }
+.nav-item-inactive:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* =========================================
+   TABLE
+   ========================================= */
+.table-th {
+  padding: 12px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #637381;
+  background-color: #f4f6f8;
+  border-bottom: 1px solid #dfe3e8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  text-align: left;
+}
+html.dark .table-th {
+  background-color: #232f3b;
+  color: #637381;
+  border-color: #2f3c48;
+}
+
+.table-td {
+  padding: 14px 20px;
+  font-size: 14px;
+  color: #1c252e;
+  border-bottom: 1px solid #f4f6f8;
+}
+html.dark .table-td {
+  color: #c4cdd5;
+  border-color: #2f3c48;
+}
+tr:last-child > .table-td { border-bottom: none; }
+tr:hover > .table-td { background-color: #f9fafb; }
+html.dark tr:hover > .table-td { background-color: #1f2c36; }
+
+/* =========================================
+   RECEIPT CARD
+   ========================================= */
+.receipt-card {
+  background: linear-gradient(135deg, rgba(0, 167, 111, 0.05) 0%, #ffffff 100%);
+}
+html.dark .receipt-card {
+  background: linear-gradient(135deg, rgba(0, 167, 111, 0.08) 0%, #1c252e 100%);
+}
+
+/* =========================================
+   ANIMATIONS
+   ========================================= */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.page-enter  { animation: pageEnter 0.3s ease both; }
+.modal-enter { animation: modalIn 0.2s ease both; }
+.slide-in    { animation: slideInRight 0.3s ease both; }
+
+.skeleton {
+  background: linear-gradient(90deg, #f4f6f8 25%, #e8ecef 50%, #f4f6f8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+html.dark .skeleton {
+  background: linear-gradient(90deg, #2b3a47 25%, #34495a 50%, #2b3a47 75%);
+  background-size: 200% 100%;
+}
+
+/* =========================================
+   MISC UTILITIES
+   ========================================= */
+.glass {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid rgba(223, 227, 232, 0.8);
+}
+html.dark .glass {
+  background-color: rgba(28, 37, 46, 0.88);
+  border-color: rgba(47, 60, 72, 0.8);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #00a76f, #5be49b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Background gradient utility */
+.bg-gradient-mixed {
+  background: linear-gradient(135deg, #ff5630 0%, #ffab00 50%, #00a76f 100%);
+  color: white;
+}

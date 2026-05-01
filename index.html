@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Shir Sai Apartment - Admin portal for managing society maintenance, payments, and owners." />
+    <title>Shir Sai Apartment – Admin Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS v3 Play CDN (handles all utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary:       '#00a76f',
+              'primary-hover': '#007867',
+              'primary-tint':  'rgba(0, 167, 111, 0.1)',
+              secondary:     '#637381',
+              tertiary:      '#556EE6',
+              neutral:       '#454f5b',
+              background:    '#F9FAFB',
+              surface:       '#FFFFFF',
+              'dark-bg':     '#141a21',
+              'dark-surface': '#1c252e',
+              'dark-border': '#34334a',
+              success:       '#22c55e',
+              warning:       '#ffab00',
+              danger:        '#ff5630',
+              info:          '#00b8d9',
+              'sidebar-bg':  '#1c252e',
+              'sidebar-hover': 'rgba(255, 255, 255, 0.04)',
+            },
+            fontFamily: {
+              sans: ['"Public Sans"', 'sans-serif'],
+              mono: ['Courier New', 'monospace'],
+            },
+            keyframes: {
+              shimmer: {
+                from: { backgroundPosition: '-200% 0' },
+                to:   { backgroundPosition: '200% 0' },
+              },
+            },
+            animation: {
+              shimmer: 'shimmer 1.5s linear infinite',
+            },
+          },
+        },
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
