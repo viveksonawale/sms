@@ -180,7 +180,7 @@ export default function Settings() {
           </div>
           <div>
             <p style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>Society Management System</p>
-            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>Version 1.0.0 — Shir Sai Apartment</p>
+            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>Version 1.0.0 — Shri Sai Apartment</p>
           </div>
         </div>
         <span style={{

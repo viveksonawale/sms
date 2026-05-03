@@ -63,8 +63,8 @@ export default function Login() {
           <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '12px', lineHeight: 1.2 }}>
             {societyName}
           </h1>
-          <p style={{ fontSize: '15px', opacity: 0.75, lineHeight: 1.6, maxWidth: '320px' }}>
-            Seamlessly manage your society's maintenance, payments, and residents from one place.
+          <p style={{ fontSize: '17px', opacity: 0.75, lineHeight: 1.6, maxWidth: '320px' }}>
+            Manage your society's maintenance, payments, and residents from one place.
           </p>
 
           <div className="flex items-center justify-center gap-6 mt-10">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { UserPlus, ArrowLeft } from 'lucide-react';
+import { UserPlus, ArrowLeft, Calendar } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useToast } from '../context/ToastContext';
 
@@ -129,18 +129,24 @@ export default function AddOwner() {
                   <label htmlFor={id} className="label">
                     {label}{required && <span style={{ color: '#ff5630', marginLeft: '2px' }}>*</span>}
                   </label>
-                  <input
-                    id={id}
-                    type={type}
-                    placeholder={placeholder}
-                    value={String(formData[key as keyof typeof formData])}
-                    onChange={(e) => {
-                      setFormData({ ...formData, [key]: e.target.value });
-                      if (errors[key]) setErrors({ ...errors, [key]: '' });
-                    }}
-                    className="input-field"
-                    style={errors[key] ? { borderColor: '#ff5630' } : undefined}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      id={id}
+                      type={type}
+                      placeholder={placeholder}
+                      value={String(formData[key as keyof typeof formData])}
+                      onChange={(e) => {
+                        setFormData({ ...formData, [key]: e.target.value });
+                        if (errors[key]) setErrors({ ...errors, [key]: '' });
+                      }}
+                      className="input-field"
+                      style={{
+                        ...(errors[key] ? { borderColor: '#ff5630' } : {}),
+                        ...(type === 'date' ? { paddingLeft: '36px' } : {})
+                      }}
+                    />
+                    {type === 'date' && <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab', pointerEvents: 'none', zIndex: 10 }} />}
+                  </div>
                   {errors[key] && (
                     <p style={{ fontSize: '12px', color: '#ff5630', marginTop: '5px' }}>{errors[key]}</p>
                   )}

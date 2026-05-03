@@ -8,10 +8,20 @@ export default function Owners() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const owners = useStore((state) => state.owners);
+  const payments = useStore((state) => state.payments);
   const language = useStore((state) => state.language);
   const theme = useStore((state) => state.theme);
 
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Build a Set of ownerIds who have paid this month
+  const paidThisMonth = new Set(
+    payments
+      .filter(p => p.status === 'paid' && p.month.includes(
+        new Date().toLocaleString('en-US', { month: 'long' }) + ' ' + new Date().getFullYear()
+      ))
+      .map(p => p.ownerId)
+  );
 
   const filteredOwners = useMemo(() => {
     const s = searchTerm.toLowerCase();
@@ -29,18 +39,19 @@ export default function Owners() {
   return (
     <div className="space-y-6 page-enter">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-row items-start justify-between gap-3 sm:gap-4">
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: textPrimary, marginBottom: '3px' }}>
             {t('owners')}
           </h1>
-          <p style={{ fontSize: '13px', color: textSecondary }}>
+          <p style={{ fontSize: '13px', color: textSecondary, lineHeight: 1.4 }}>
             Manage and view all registered society members
           </p>
         </div>
         <button
           onClick={() => navigate('/owners/add')}
-          className="btn-primary w-full sm:w-auto justify-center"
+          className="btn-primary flex-shrink-0 sm:w-auto"
+          style={{ padding: '8px 14px', marginTop: '2px' }}
         >
           <Plus size={17} />
           {t('addOwner')}
@@ -137,15 +148,9 @@ export default function Owners() {
                       </h3>
                       <ChevronRight size={15} style={{ color: '#c4cdd5', flexShrink: 0, marginTop: '2px' }} />
                     </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span
-                        className="badge badge-paid"
-                        style={{ fontSize: '10px' }}
-                      >
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="badge badge-paid" style={{ fontSize: '10px' }}>
                         {owner.flat}
-                      </span>
-                      <span style={{ fontSize: '11px', color: textSecondary }} className="truncate">
-                        {owner.phone}
                       </span>
                     </div>
                   </div>
@@ -158,12 +163,15 @@ export default function Owners() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}
                 >
-                  <div>
-                    <p style={{ fontSize: '11px', color: textSecondary, marginBottom: '2px' }}>Monthly Bill</p>
-                    <p style={{ fontSize: '15px', fontWeight: 800, color: textPrimary }}>
-                      ₹{owner.monthlyAmount.toLocaleString('en-IN')}
-                    </p>
-                  </div>
+                  {paidThisMonth.has(owner.id) ? (
+                    <span className="badge badge-paid" style={{ fontSize: '12px', padding: '4px 12px' }}>
+                      ● Paid
+                    </span>
+                  ) : (
+                    <span className="badge badge-pending" style={{ fontSize: '12px', padding: '4px 12px' }}>
+                      ● Unpaid
+                    </span>
+                  )}
                   <span className="text-xs font-semibold" style={{ color: '#00a76f' }}>View Details →</span>
                 </div>
               </div>

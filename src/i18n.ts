@@ -12,8 +12,8 @@ const resources = {
       pending: 'Pending',
       send: 'Send',
       month: 'Month',
-      fromDate: 'From Date',
-      toDate: 'To Date',
+      fromMonth: 'From Month',
+      toMonth: 'To Month',
       flat: 'Flat',
       contact: 'Contact',
 
@@ -122,8 +122,8 @@ const resources = {
       pending: 'थकबाकी',
       send: 'पाठवा',
       month: 'महिना',
-      fromDate: 'पासून (तारीख)',
-      toDate: 'पर्यंत (तारीख)',
+      fromMonth: 'पासून (महिना)',
+      toMonth: 'पर्यंत (महिना)',
       flat: 'फ्लॅट',
       contact: 'संपर्क',
 

@@ -93,7 +93,7 @@ export const useStore = create<StoreState>()(
       isAuthenticated: false,
       theme: 'light',
       language: 'en',
-      societyName: 'Shir Sai Apartment',
+      societyName: 'Shri Sai Apartment',
       receiptCounter: 4, // next available: RCP-2025-004
       sidebarCollapsed: false,
       setAuth: (status) => set({ isAuthenticated: status }),

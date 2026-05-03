@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Sun, Moon, Globe, User, LogOut, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Menu, Sun, Moon, Globe, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 
@@ -41,7 +41,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
   return (
     <header
-      className="sticky top-0 z-10 flex items-center justify-between px-4"
+      className="sticky top-0 z-10 flex items-center justify-between px-2 sm:px-4"
       style={{
         height: '64px',
         backgroundColor: theme === 'dark' ? '#1c252e' : '#ffffff',
@@ -50,11 +50,11 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
       }}
     >
       {/* Left: Hamburger + Brand Icon (No Title as requested) */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         {/* Mobile Toggle */}
         <button
           onClick={onMenuClick}
-          className="md:hidden p-2 rounded-lg transition-colors flex-shrink-0"
+          className="md:hidden p-1.5 sm:p-2 rounded-lg transition-colors flex-shrink-0"
           style={{ color: theme === 'dark' ? '#919eab' : '#637381' }}
           aria-label="Open menu"
         >
@@ -72,7 +72,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         </button>
 
         {/* Mobile Brand (Visible only on mobile) */}
-        <div className="flex items-center gap-2 md:hidden overflow-hidden ml-1">
+        <div className="flex items-center gap-1.5 md:hidden overflow-hidden" style={{ maxWidth: '160px' }}>
           <div
             className="flex-shrink-0 flex items-center justify-center"
             style={{
@@ -83,8 +83,17 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           >
             <img src="/images/shri.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
-          <span className="text-sm font-bold truncate" style={{ color: theme === 'dark' ? '#ffffff' : '#1c252e' }}>
-            {societyName}
+          <span 
+            className="font-bold truncate" 
+            style={{ 
+              color: theme === 'dark' ? '#ffffff' : '#1c252e',
+              fontSize: '14px', // Stable font size to prevent jumping between languages
+              lineHeight: '1.2',
+            }}
+          >
+            {language === 'mr' && societyName === 'Shri Sai Apartment' 
+              ? 'श्री साई अपार्टमेंट' 
+              : societyName}
           </span>
         </div>
       </div>
@@ -112,7 +121,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg transition-all"
+          className="p-1.5 sm:p-2 rounded-lg transition-all"
           style={{ color: theme === 'dark' ? '#919eab' : '#637381', border: 'none', cursor: 'pointer' }}
         >
           {theme === 'light' ? <Moon size={18} /> : <Sun size={18} style={{ color: '#ffab00' }} />}
@@ -122,8 +131,8 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         <div className="relative" ref={popRef}>
           <button
             onClick={() => setShowAdminPop(!showAdminPop)}
-            className="flex items-center gap-2 pl-2 sm:pl-3 transition-opacity hover:opacity-80 focus:outline-none"
-            style={{ borderLeft: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.08)' : '#f4f6f8'}`, marginLeft: '4px' }}
+            className="flex items-center gap-2 pl-1.5 sm:pl-3 transition-opacity hover:opacity-80 focus:outline-none"
+            style={{ borderLeft: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.08)' : '#f4f6f8'}`, marginLeft: '2px' }}
           >
             <div
               className="flex items-center justify-center"
@@ -158,19 +167,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                 <p style={{ fontSize: '14px', fontWeight: 700, color: theme === 'dark' ? '#ffffff' : '#1c252e' }}>Ramesh Sonawale</p>
                 <p style={{ fontSize: '12px', color: '#919eab' }}>Society Secretary</p>
               </div>
-              <div className="space-y-1">
-                <button 
-                  className="w-full flex items-center gap-3 p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                  style={{ color: theme === 'dark' ? '#ffffff' : '#1c252e', fontSize: '13px' }}
-                >
-                  <User size={16} /> Profile Information
-                </button>
-                <button 
-                  className="w-full flex items-center gap-3 p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                  style={{ color: theme === 'dark' ? '#ffffff' : '#1c252e', fontSize: '13px' }}
-                >
-                  <Settings size={16} /> Admin Settings
-                </button>
+              <div>
                 <button 
                   onClick={() => setAuth(false)}
                   className="w-full flex items-center gap-3 p-2 rounded-lg transition-colors hover:bg-red-50 text-red-500"

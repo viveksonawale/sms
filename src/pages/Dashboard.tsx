@@ -318,18 +318,9 @@ export default function Dashboard() {
                       </h3>
                       <ChevronRight size={15} style={{ color: '#c4cdd5', flexShrink: 0, marginTop: '2px' }} />
                     </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span
-                        style={{
-                          fontSize: '11px', fontWeight: 700, padding: '2px 8px',
-                          backgroundColor: 'rgba(0,167,111,0.1)', color: '#00a76f',
-                          borderRadius: '6px',
-                        }}
-                      >
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="badge badge-paid" style={{ fontSize: '10px' }}>
                         {owner.flat}
-                      </span>
-                      <span style={{ fontSize: '11px', color: textSecondary }} className="truncate">
-                        {owner.phone}
                       </span>
                     </div>
                   </div>
@@ -342,30 +333,16 @@ export default function Dashboard() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}
                 >
-                  <div>
-                    <p style={{ fontSize: '11px', color: textSecondary, marginBottom: '2px' }}>Monthly</p>
-                    <p style={{ fontSize: '15px', fontWeight: 800, color: textPrimary }}>
-                      ₹{owner.monthlyAmount.toLocaleString('en-IN')}
-                    </p>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: '11px', fontWeight: 700, padding: '4px 12px',
-                      borderRadius: '20px',
-                      backgroundColor: hasPaid ? 'rgba(34,197,94,0.12)' : 'rgba(255,171,0,0.12)',
-                      color: hasPaid ? '#118d57' : '#b76e00',
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '6px', height: '6px', borderRadius: '50%',
-                        backgroundColor: hasPaid ? '#22c55e' : '#ffab00',
-                        display: 'inline-block',
-                      }}
-                    />
-                    {hasPaid ? t('paid') : t('pending')}
-                  </span>
+                  {hasPaid ? (
+                    <span className="badge badge-paid" style={{ fontSize: '12px', padding: '4px 12px' }}>
+                      ● {t('paid')}
+                    </span>
+                  ) : (
+                    <span className="badge badge-pending" style={{ fontSize: '12px', padding: '4px 12px' }}>
+                      ● {t('pending')}
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold" style={{ color: '#00a76f' }}>View Details →</span>
                 </div>
               </div>
             );

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { Plus, Receipt, Search, Filter, Calendar, Edit2, Trash2, IndianRupee } from 'lucide-react';
+import { Plus, Receipt, Search, Calendar, Edit2, Trash2, IndianRupee } from 'lucide-react';
 import { format, parseISO, subMonths } from 'date-fns';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
@@ -25,6 +25,7 @@ export default function Expenses() {
   const theme = useStore((state) => state.theme);
   const isDark = theme === 'dark';
   const expenses = useStore((state) => state.expenses);
+  const payments = useStore((state) => state.payments);
   const deleteExpense = useStore((state) => state.deleteExpense);
   const { toast } = useToast();
 
@@ -68,11 +69,14 @@ export default function Expenses() {
     .filter(e => e.date.startsWith(format(new Date(), 'yyyy-MM')))
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const totalThisYear = expenses
-    .filter(e => e.date.startsWith(format(new Date(), 'yyyy')))
-    .reduce((sum, e) => sum + e.amount, 0);
-
   const entriesThisMonth = expenses.filter(e => e.date.startsWith(format(new Date(), 'yyyy-MM'))).length;
+
+
+  // Total collected = all maintenance payments with status 'paid'
+  const totalCollected = payments
+    .filter(p => p.status === 'paid')
+    .reduce((sum, p) => sum + p.amount, 0);
+
 
   const categoryBreakdown = useMemo(() => {
     const monthExpenses = expenses.filter(e => e.date.startsWith(selectedMonth));
@@ -82,10 +86,6 @@ export default function Expenses() {
     });
     return breakdown;
   }, [expenses, selectedMonth]);
-
-  const mostSpentCategory = Object.keys(categoryBreakdown).length > 0 
-    ? Object.keys(categoryBreakdown).reduce((a, b) => categoryBreakdown[a] > categoryBreakdown[b] ? a : b)
-    : 'None';
 
   const maxCategoryAmount = Math.max(...Object.values(categoryBreakdown), 1);
 
@@ -113,28 +113,31 @@ export default function Expenses() {
   return (
     <div className="space-y-6 page-enter">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-row items-start justify-between gap-3 sm:gap-4">
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: textPrimary }}>
             {t('otherExpenses')}
           </h1>
-          <p style={{ fontSize: '14px', color: textSecondary, marginTop: '4px' }}>
+          <p style={{ fontSize: '14px', color: textSecondary, marginTop: '4px', lineHeight: 1.4 }}>
             Track all society expenses outside of maintenance collection
           </p>
         </div>
-        <button className="btn-primary" onClick={() => navigate('/expenses/add')}>
+        <button 
+          className="btn-primary flex-shrink-0" 
+          onClick={() => navigate('/expenses/add')}
+          style={{ padding: '8px 14px', marginTop: '4px' }}
+        >
           <Plus size={18} />
           {t('addExpense')}
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { label: t('totalThisMonth'), value: `₹${totalThisMonth.toLocaleString()}`, icon: IndianRupee, color: '#00a76f', bg: 'rgba(0, 167, 111, 0.16)' },
-          { label: t('totalThisYear'), value: `₹${totalThisYear.toLocaleString()}`, icon: Receipt, color: '#8e33ff', bg: 'rgba(142, 51, 255, 0.16)' },
+          { label: t('totalThisMonth'), value: `₹${totalThisMonth.toLocaleString('en-IN')}`, icon: IndianRupee, color: '#00a76f', bg: 'rgba(0, 167, 111, 0.16)' },
           { label: 'Entries This Month', value: entriesThisMonth, icon: Calendar, color: '#00b8d9', bg: 'rgba(0, 184, 217, 0.16)' },
-          { label: 'Most Spent Category', value: mostSpentCategory, icon: Filter, color: '#ff5630', bg: 'rgba(255, 86, 48, 0.16)' },
+          { label: 'Total Collected', value: `₹${totalCollected.toLocaleString('en-IN')}`, icon: Receipt, color: '#8e33ff', bg: 'rgba(142, 51, 255, 0.16)' },
         ].map((stat, i) => (
           <div key={i} className="card p-5" style={{ backgroundColor: cardBg, display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: stat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

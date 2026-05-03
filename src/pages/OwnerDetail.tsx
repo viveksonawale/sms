@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, isSameMonth, eachMonthOfInterval } from 'date-fns';
 import {
   ArrowLeft, Trash2, Download, FileText,
   Pencil, X, Check, ChevronLeft, ChevronRight,
-  Phone, Mail, Calendar, IndianRupee, Home,
+  Phone, Calendar, IndianRupee, Home,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { generateReceiptPDF } from '../utils/pdf';
@@ -28,6 +28,168 @@ export default function OwnerDetail() {
   const { t } = useTranslation();
   const { toast } = useToast();
 
+  const theme = useStore((state) => state.theme);
+  const isDark = theme === 'dark';
+  const cardBg = isDark ? '#1c252e' : '#ffffff';
+  const textPrimary = isDark ? '#ffffff' : '#1c252e';
+  const textSecondary = isDark ? '#919eab' : '#637381';
+  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8';
+
+  // --- Custom Month Picker Component ---
+  const MonthYearPicker = ({ 
+    label, value, onChange, minDate, existingPayments, allowFuture 
+  }: { 
+    label: string, value: string, onChange: (val: string) => void,
+    minDate?: string, existingPayments: any[], allowFuture?: boolean
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [viewYear, setViewYear] = useState(parseInt(value.split('-')[0]));
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonthIdx = parseInt(value.split('-')[1]) - 1;
+    const currentYear = parseInt(value.split('-')[0]);
+
+    const today = new Date();
+    const todayMonthIdx = today.getMonth();
+    const todayYear = today.getFullYear();
+
+    const isMonthDisabled = (idx: number) => {
+      const monthStr = String(idx + 1).padStart(2, '0');
+      const dateStr = `${viewYear}-${monthStr}`;
+      
+      // Future validation — only block future months when allowFuture is NOT set
+      if (!allowFuture) {
+        if (viewYear > todayYear || (viewYear === todayYear && idx > todayMonthIdx)) return true;
+      }
+      
+      // Min date validation (for To Month — cannot go before From Month)
+      if (minDate && dateStr < minDate) return true;
+      
+      // Payment history validation — only for non-future months
+      const d = new Date(dateStr + '-01');
+      const alreadyPaid = existingPayments.some(p => {
+        if (p.status !== 'paid') return false;
+        const parts = p.month.split(' - ');
+        const parsePDate = (str: string) => startOfMonth(new Date(str));
+        const start = parsePDate(parts[0]);
+        const end = parts.length === 2 ? parsePDate(parts[1]) : start;
+        return d >= start && d <= end;
+      });
+      
+      return alreadyPaid;
+    };
+
+    const handleMonthClick = (idx: number) => {
+      if (isMonthDisabled(idx)) return;
+      const monthStr = String(idx + 1).padStart(2, '0');
+      onChange(`${viewYear}-${monthStr}`);
+      setIsOpen(false);
+    };
+
+    return (
+      <div style={{ position: 'relative' }}>
+        <label className="label">{label}</label>
+        <div 
+          onClick={() => setIsOpen(!isOpen)}
+          className="input-field"
+          style={{ 
+            paddingLeft: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+            borderColor: isOpen ? '#00a76f' : undefined,
+            boxShadow: isOpen ? '0 0 0 3px rgba(0, 167, 111, 0.16)' : undefined,
+            userSelect: 'none',
+            position: 'relative' // Fix flying icons
+          }}
+        >
+          <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab', zIndex: 10 }} />
+          <span style={{ color: textPrimary, fontSize: '14px', fontWeight: 600 }}>
+            {format(new Date(value + '-01'), 'MMMM yyyy')}
+          </span>
+        </div>
+
+        {isOpen && (
+          <>
+            <div 
+              onClick={() => setIsOpen(false)} 
+              style={{ position: 'fixed', inset: 0, zIndex: 998 }} 
+            />
+            <div style={{ 
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 999,
+              width: '260px', backgroundColor: cardBg, borderRadius: '16px',
+              boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.4)' : '0 12px 32px rgba(145, 158, 171, 0.2)',
+              border: `1px solid ${borderColor}`,
+              padding: '16px', overflow: 'hidden', animation: 'modalIn 0.2s ease both'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <button 
+                  type="button" onClick={() => setViewYear(v => v - 1)}
+                  style={{ 
+                    width: '32px', height: '32px', borderRadius: '8px', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f4f6f8',
+                    border: 'none', color: textSecondary, cursor: 'pointer' 
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span style={{ fontWeight: 800, color: textPrimary, fontSize: '16px' }}>{viewYear}</span>
+                <button 
+                  type="button" 
+                  onClick={() => setViewYear(v => v + 1)}
+                  disabled={!allowFuture && viewYear >= todayYear}
+                  style={{ 
+                    width: '32px', height: '32px', borderRadius: '8px', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f4f6f8',
+                    border: 'none', color: textSecondary, 
+                    cursor: (!allowFuture && viewYear >= todayYear) ? 'not-allowed' : 'pointer',
+                    opacity: (!allowFuture && viewYear >= todayYear) ? 0.3 : 1
+                  }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {months.map((m, i) => {
+                  const isActive = i === currentMonthIdx && viewYear === currentYear;
+                  const isDisabled = isMonthDisabled(i);
+                  return (
+                    <button
+                      key={m} type="button"
+                      disabled={isDisabled}
+                      onClick={() => handleMonthClick(i)}
+                      style={{
+                        padding: '10px 0', border: 'none', borderRadius: '10px',
+                        fontSize: '13px', fontWeight: isActive ? 800 : 600,
+                        cursor: isDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
+                        backgroundColor: isActive ? '#00a76f' : 'transparent',
+                        color: isActive ? '#ffffff' : (isDisabled ? (isDark ? '#3d4e5c' : '#dfe3e8') : textSecondary),
+                        opacity: isDisabled ? 0.5 : 1,
+                      }}
+                      onMouseEnter={e => {
+                        if (!isActive && !isDisabled) {
+                          e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : '#f4f6f8';
+                          e.currentTarget.style.color = textPrimary;
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isActive && !isDisabled) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = textSecondary;
+                        }
+                      }}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const owner = useStore((state) => state.owners.find((o) => o.id === id));
   const allPayments = useStore((state) => state.payments);
   const ownerPayments = useMemo(() => allPayments.filter((p) => p.ownerId === id), [allPayments, id]);
@@ -39,11 +201,10 @@ export default function OwnerDetail() {
   const nextReceiptNumber = useStore((state) => state.nextReceiptNumber);
   const societyName = useStore((state) => state.societyName);
   const language = useStore((state) => state.language);
-  const theme = useStore((state) => state.theme);
 
-  const [paymentFromDate, setPaymentFromDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [paymentToDate, setPaymentToDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [paymentAmount, setPaymentAmount] = useState(owner?.monthlyAmount ?? 0);
+  const [paymentFromDate, setPaymentFromDate] = useState(format(new Date(), 'yyyy-MM'));
+  const [paymentToDate, setPaymentToDate] = useState(format(new Date(), 'yyyy-MM'));
+  const [paymentAmount, setPaymentAmount] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeletePaymentModal, setShowDeletePaymentModal] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
@@ -71,11 +232,6 @@ export default function OwnerDetail() {
   const totalPages = Math.max(1, Math.ceil(sortedPayments.length / PAGE_SIZE));
   const paginatedPayments = sortedPayments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const isDark = theme === 'dark';
-  const cardBg = isDark ? '#1c252e' : '#ffffff';
-  const textPrimary = isDark ? '#ffffff' : '#1c252e';
-  const textSecondary = isDark ? '#919eab' : '#637381';
-  const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8';
   const cardShadow = isDark
     ? '0 0 2px 0 rgba(0,0,0,0.3), 0 12px 24px -4px rgba(0,0,0,0.2)'
     : '0 0 2px 0 rgba(145,158,171,0.2), 0 12px 24px -4px rgba(145,158,171,0.12)';
@@ -96,11 +252,71 @@ export default function OwnerDetail() {
 
   const handleMarkAsPaid = (e: React.FormEvent) => {
     e.preventDefault();
-    const period = `${format(new Date(paymentFromDate), 'dd MMM yyyy')} - ${format(new Date(paymentToDate), 'dd MMM yyyy')}`;
-    if (ownerPayments.some((p) => p.month === period && p.status === 'paid')) {
-      toast(`Payment for ${period} is already recorded.`, 'error');
+    
+    // Validate amount
+    if (!paymentAmount || paymentAmount <= 0) {
+      toast('Amount cannot be zero or empty.', 'error');
       return;
     }
+
+    // Compare as strings (yyyy-MM) to avoid timezone pitfalls where
+    // startOfMonth(new Date()) in UTC could mismatch local date at +05:30.
+    const todayKey = format(new Date(), 'yyyy-MM');
+    const startKey = paymentFromDate; // already in "yyyy-MM" format
+    const endKey = paymentToDate;
+
+    // Block only if From Month is strictly in the future (not the current month).
+    if (startKey > todayKey) {
+      toast('From Month cannot be a future month.', 'error');
+      return;
+    }
+    
+    if (startKey > endKey) {
+      toast('From Month cannot be after To Month', 'error');
+      return;
+    }
+
+    // Build start/end Date objects from the validated keys (noon local time to avoid UTC-day-boundary issues)
+    const start = new Date(startKey + '-01T12:00:00');
+    const end = new Date(endKey + '-01T12:00:00');
+
+    const period = isSameMonth(start, end)
+      ? format(start, 'MMMM yyyy')
+      : `${format(start, 'MMM yyyy')} - ${format(end, 'MMM yyyy')}`;
+
+    // Build a helper that expands a stored payment's period string into
+    // all the individual month-start dates it covers.
+    const expandPaymentMonths = (p: typeof ownerPayments[0]): Date[] => {
+      const parts = p.month.split(' - ');
+      const parsePDate = (str: string) => startOfMonth(new Date(str));
+      const pStart = parsePDate(parts[0]);
+      const pEnd = parts.length === 2 ? parsePDate(parts[1]) : pStart;
+      // Guard against invalid dates
+      if (isNaN(pStart.getTime()) || isNaN(pEnd.getTime())) return [];
+      return eachMonthOfInterval({ start: pStart, end: pEnd });
+    };
+
+    // Collect all months that are already marked as PAID for this owner.
+    const paidMonthKeys = new Set<string>();
+    ownerPayments.forEach((p) => {
+      if (p.status !== 'paid') return;
+      expandPaymentMonths(p).forEach((d) => {
+        // Key: "YYYY-MM" for fast O(1) lookup
+        paidMonthKeys.add(format(d, 'yyyy-MM'));
+      });
+    });
+
+    // Enumerate every month in the requested range and check for duplicates.
+    const requestedMonths = eachMonthOfInterval({ start, end });
+    const duplicateMonth = requestedMonths.find((m) =>
+      paidMonthKeys.has(format(m, 'yyyy-MM'))
+    );
+
+    if (duplicateMonth) {
+      toast('Maintenance already marked as PAID for this month', 'error');
+      return;
+    }
+
     const rcpNum = nextReceiptNumber();
     useStore.setState((s) => ({ receiptCounter: s.receiptCounter + 1 }));
     const newPayment = {
@@ -215,13 +431,17 @@ export default function OwnerDetail() {
                 ].map(({ label, key, type, required }) => (
                   <div key={key}>
                     <label className="label">{label}</label>
-                    <input
-                      type={type}
-                      value={String(editForm[key as keyof typeof editForm] || '')}
-                      onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
-                      className="input-field"
-                      required={required !== false}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={type}
+                        value={String(editForm[key as keyof typeof editForm] || '')}
+                        onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
+                        className="input-field"
+                        style={type === 'date' ? { paddingLeft: '36px' } : undefined}
+                        required={required !== false}
+                      />
+                      {type === 'date' && <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab', pointerEvents: 'none', zIndex: 10 }} />}
+                    </div>
                   </div>
                 ))}
                 <button type="submit" className="btn-primary w-full justify-center" style={{ marginTop: '4px' }}>
@@ -231,11 +451,8 @@ export default function OwnerDetail() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {[
-                  { icon: Phone, label: t('phone'), value: owner.phone },
-                  { icon: Mail, label: t('email'), value: owner.email },
-                  { icon: IndianRupee, label: t('monthlyAmount'), value: `₹${owner.monthlyAmount.toLocaleString('en-IN')}` },
-                  { icon: Calendar, label: t('joinedDate'), value: format(new Date(owner.joinedDate), 'dd MMMM yyyy') },
                   { icon: Home, label: t('flat'), value: owner.flat },
+                  { icon: Phone, label: t('phone'), value: owner.phone.startsWith('91') && owner.phone.length === 12 ? `+91 ${owner.phone.slice(2)}` : `+91 ${owner.phone.replace(/^\+91\s*/, '')}` },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                     <div style={{
@@ -278,9 +495,9 @@ export default function OwnerDetail() {
           <div style={{
             backgroundColor: cardBg, borderRadius: '12px',
             border: '1px solid rgba(0,167,111,0.2)',
-            boxShadow: cardShadow, overflow: 'hidden',
+            boxShadow: cardShadow, overflow: 'visible',
           }}>
-            <div style={{ height: '4px', background: 'linear-gradient(90deg, #007867, #00a76f, #5be49b)' }} />
+            <div style={{ height: '4px', background: 'linear-gradient(90deg, #007867, #00a76f, #5be49b)', borderRadius: '12px 12px 0 0' }} />
             <div style={{ padding: '20px' }}>
               <h2 style={{ fontSize: '14px', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'rgba(0,167,111,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -289,15 +506,24 @@ export default function OwnerDetail() {
                 {t('markAsPaid')}
               </h2>
               <form onSubmit={handleMarkAsPaid} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label className="label">{t('fromDate')}</label>
-                    <input type="date" value={paymentFromDate} onChange={(e) => setPaymentFromDate(e.target.value)} className="input-field" required />
-                  </div>
-                  <div>
-                    <label className="label">{t('toDate')}</label>
-                    <input type="date" value={paymentToDate} onChange={(e) => setPaymentToDate(e.target.value)} className="input-field" required />
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <MonthYearPicker 
+                    label={t('fromMonth')} 
+                    value={paymentFromDate} 
+                    onChange={(val) => {
+                      setPaymentFromDate(val);
+                      if (paymentToDate < val) setPaymentToDate(val);
+                    }}
+                    existingPayments={ownerPayments}
+                  />
+                  <MonthYearPicker 
+                    label={t('toMonth')} 
+                    value={paymentToDate} 
+                    onChange={setPaymentToDate}
+                    minDate={paymentFromDate}
+                    existingPayments={ownerPayments}
+                    allowFuture
+                  />
                 </div>
                 <div>
                   <label className="label">{t('amount')} (₹)</label>
@@ -307,7 +533,7 @@ export default function OwnerDetail() {
                       type="number" value={paymentAmount}
                       onChange={(e) => setPaymentAmount(Number(e.target.value))}
                       className="input-field" style={{ paddingLeft: '36px', fontWeight: 700, fontSize: '16px' }}
-                      min={0} required
+                      min={1} required
                     />
                   </div>
                 </div>
@@ -619,6 +845,7 @@ export default function OwnerDetail() {
           isOpen={true}
           onClose={() => setSelectedPayment(null)}
           title="Payment Details"
+          icon={IndianRupee}
         >
           <div style={{ marginTop: '16px' }}>
             <div style={{

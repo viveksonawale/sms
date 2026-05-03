@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import type { Expense } from '../store/useStore';
-import { ChevronLeft, Save, Receipt } from 'lucide-react';
+import { ChevronLeft, Save, Receipt, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '../context/ToastContext';
 
@@ -163,7 +163,7 @@ export default function AddExpense() {
                   <input 
                     type="number" 
                     min="0" 
-                    className="input-field pl-8" 
+                    className="input-field pl-9" 
                     value={amount} 
                     onChange={e => setAmount(e.target.value)} 
                     required 
@@ -172,15 +172,19 @@ export default function AddExpense() {
                 </div>
               </div>
 
-              <div>
+               <div>
                 <label className="label">Date *</label>
-                <input 
-                  type="date" 
-                  className="input-field" 
-                  value={date} 
-                  onChange={e => setDate(e.target.value)} 
-                  required 
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="date" 
+                    className="input-field" 
+                    style={{ paddingLeft: '36px' }}
+                    value={date} 
+                    onChange={e => setDate(e.target.value)} 
+                    required 
+                  />
+                  <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab', pointerEvents: 'none', zIndex: 10 }} />
+                </div>
               </div>
 
               <div>

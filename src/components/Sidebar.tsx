@@ -13,6 +13,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const navigate = useNavigate();
   const setAuth = useStore((state) => state.setAuth);
   const societyName = useStore((state) => state.societyName);
+  const language = useStore((state) => state.language);
   const owners = useStore((state) => state.owners);
   const payments = useStore((state) => state.payments);
   const sidebarCollapsed = useStore((state) => state.sidebarCollapsed);
@@ -83,7 +84,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               {!sidebarCollapsed && (
                 <div className="min-w-0 transition-all duration-300 ease-in-out">
                   <p style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', lineHeight: 1.3 }} className="truncate">
-                    {societyName}
+                    {language === 'mr' && societyName === 'Shri Sai Apartment' 
+                      ? 'श्री साई अपार्टमेंट' 
+                      : societyName}
                   </p>
                   <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
                     {t('adminPortal')}

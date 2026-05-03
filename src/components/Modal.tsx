@@ -12,6 +12,7 @@ interface ModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  icon?: React.ElementType;
   children?: ReactNode;
 }
 
@@ -24,6 +25,7 @@ export default function Modal({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   danger = false,
+  icon: IconComponent = AlertTriangle,
   children,
 }: ModalProps) {
   const theme = useStore((state) => state.theme);
@@ -78,7 +80,7 @@ export default function Modal({
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}
               >
-                <AlertTriangle size={18} style={{ color: danger ? '#ff5630' : '#00a76f' }} />
+                <IconComponent size={18} style={{ color: danger ? '#ff5630' : '#00a76f' }} />
               </div>
               <h3 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary, lineHeight: 1.3 }}>
                 {title}
