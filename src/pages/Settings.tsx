@@ -39,9 +39,9 @@ const ToggleBtn = ({
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
       padding: '11px 16px', borderRadius: '8px', cursor: 'pointer',
       fontSize: '14px', fontWeight: 700,
-      border: `2px solid ${active ? '#00a76f' : (isDark ? 'rgba(255,255,255,0.08)' : '#dfe3e8')}`,
-      backgroundColor: active ? 'rgba(0,167,111,0.1)' : 'transparent',
-      color: active ? '#00a76f' : textSecondary,
+      border: `2px solid ${active ? '#f97316' : (isDark ? 'rgba(255,255,255,0.08)' : '#dfe3e8')}`,
+      backgroundColor: active ? 'rgba(249, 115, 22,0.1)' : 'transparent',
+      color: active ? '#f97316' : textSecondary,
       transition: 'all 0.15s ease',
     }}
   >
@@ -89,8 +89,8 @@ export default function Settings() {
       {/* Society Name */}
       <SectionCard
         {...commonProps}
-        icon={<Building2 size={18} style={{ color: '#00a76f' }} />}
-        iconBg="rgba(0,167,111,0.12)"
+        icon={<Building2 size={18} style={{ color: '#f97316' }} />}
+        iconBg="rgba(249, 115, 22,0.12)"
         title={t('societyName')}
         subtitle={t('personalizeInterface')}
       >
@@ -172,9 +172,9 @@ export default function Settings() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
             width: '40px', height: '40px', borderRadius: '10px',
-            background: 'linear-gradient(135deg, #00a76f, #007867)',
+            background: 'linear-gradient(135deg, #f97316, #ea580c)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: 'rgba(0,167,111,0.3) 0px 4px 10px 0px',
+            boxShadow: 'rgba(249, 115, 22,0.3) 0px 4px 10px 0px',
           }}>
             <Info size={18} style={{ color: '#fff' }} />
           </div>
@@ -185,7 +185,7 @@ export default function Settings() {
         </div>
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px',
-          backgroundColor: 'rgba(0,167,111,0.1)', color: '#00a76f',
+          backgroundColor: 'rgba(249, 115, 22,0.1)', color: '#f97316',
         }}>
           Active
         </span>

@@ -111,18 +111,18 @@ export default function AddExpense() {
 
       <div className="card overflow-hidden" style={{ backgroundColor: cardBg, borderRadius: '16px' }}>
         {/* Top accent bar */}
-        <div style={{ height: '6px', background: 'linear-gradient(90deg, #00a76f, #5be49b)' }} />
+        <div style={{ height: '6px', background: 'linear-gradient(90deg, #f97316, #fdba74)' }} />
         
         <div className="p-6 md:p-8">
           <div className="flex items-center gap-4 mb-8">
             <div 
               style={{ 
                 width: '48px', height: '48px', borderRadius: '12px', 
-                backgroundColor: 'rgba(0, 167, 111, 0.1)', 
+                backgroundColor: 'rgba(249, 115, 22, 0.1)', 
                 display: 'flex', alignItems: 'center', justifyContent: 'center' 
               }}
             >
-              <Receipt size={24} style={{ color: '#00a76f' }} />
+              <Receipt size={24} style={{ color: '#f97316' }} />
             </div>
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary }}>Expense Information</h3>
@@ -140,7 +140,7 @@ export default function AddExpense() {
                   value={title} 
                   onChange={e => setTitle(e.target.value)} 
                   required 
-                  placeholder="e.g. Lift Repair" 
+                  placeholder="" 
                 />
               </div>
 
@@ -167,7 +167,7 @@ export default function AddExpense() {
                     value={amount} 
                     onChange={e => setAmount(e.target.value)} 
                     required 
-                    placeholder="0.00" 
+                    placeholder="" 
                   />
                 </div>
               </div>
@@ -195,7 +195,7 @@ export default function AddExpense() {
                   value={paidTo} 
                   onChange={e => setPaidTo(e.target.value)} 
                   required 
-                  placeholder="Vendor or Person name" 
+                  placeholder="" 
                 />
               </div>
 
@@ -206,7 +206,7 @@ export default function AddExpense() {
                   rows={3} 
                   value={note} 
                   onChange={e => setNote(e.target.value)} 
-                  placeholder="Optional description or payment details..." 
+                  placeholder="" 
                   maxLength={200} 
                 />
               </div>

@@ -1,6 +1,6 @@
 /* =============================================
    Global styles — Dasher Template Design System
-   Primary: #00a76f | Font: Public Sans
+   Primary: #f97316 | Font: Public Sans
    ============================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
@@ -81,7 +81,7 @@ html.dark .card {
    BUTTONS
    ========================================= */
 .btn-primary {
-  background-color: #00a76f;
+  background-color: #f97316;
   color: #ffffff;
   padding: 8px 20px;
   border-radius: 8px;
@@ -94,14 +94,14 @@ html.dark .card {
   align-items: center;
   gap: 8px;
   transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
-  box-shadow: rgba(0, 167, 111, 0.24) 0px 8px 16px 0px;
+  box-shadow: rgba(249, 115, 22, 0.24) 0px 8px 16px 0px;
   line-height: 1.57;
   white-space: nowrap;
 }
 .btn-primary:hover {
-  background-color: #008f5d;
+  background-color: #ea580c;
   transform: translateY(-1px);
-  box-shadow: rgba(0, 167, 111, 0.32) 0px 12px 20px -4px;
+  box-shadow: rgba(249, 115, 22, 0.32) 0px 12px 20px -4px;
 }
 .btn-primary:active { transform: translateY(0); }
 .btn-primary:disabled {
@@ -112,13 +112,13 @@ html.dark .card {
 
 .btn-ghost {
   background: transparent;
-  color: #00a76f;
+  color: #f97316;
   padding: 7px 20px;
   border-radius: 8px;
   font-weight: 700;
   font-size: 14px;
   font-family: inherit;
-  border: 1px solid rgba(0, 167, 111, 0.48);
+  border: 1px solid rgba(249, 115, 22, 0.48);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -126,11 +126,11 @@ html.dark .card {
   transition: all 0.15s ease;
 }
 .btn-ghost:hover {
-  background-color: rgba(0, 167, 111, 0.08);
+  background-color: rgba(249, 115, 22, 0.08);
   transform: translateY(-1px);
 }
-html.dark .btn-ghost { color: #5be49b; border-color: rgba(91, 228, 155, 0.48); }
-html.dark .btn-ghost:hover { background-color: rgba(91, 228, 155, 0.12); }
+html.dark .btn-ghost { color: #fdba74; border-color: rgba(253, 186, 116, 0.48); }
+html.dark .btn-ghost:hover { background-color: rgba(253, 186, 116, 0.12); }
 
 .btn-dark {
   background-color: #1c252e;
@@ -204,8 +204,8 @@ html.dark .btn-white:hover {
 .input-field.pr-10 { padding-right: 2.5rem; }
 .input-field::placeholder { color: #919eab; }
 .input-field:focus {
-  border-color: #00a76f;
-  box-shadow: 0 0 0 3px rgba(0, 167, 111, 0.16);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
 }
 html.dark .input-field {
   background-color: #28343f;
@@ -214,8 +214,8 @@ html.dark .input-field {
 }
 html.dark .input-field::placeholder { color: #637381; }
 html.dark .input-field:focus {
-  border-color: #00a76f;
-  box-shadow: 0 0 0 3px rgba(0, 167, 111, 0.2);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
 }
 .input-field.error { border-color: #ff5630; }
 .input-field.error:focus { box-shadow: 0 0 0 3px rgba(255, 86, 48, 0.16); }
@@ -270,8 +270,8 @@ html.dark .badge-pending { background-color: rgba(255, 171, 0, 0.16); color: #ff
   position: relative;
 }
 .nav-item-active {
-  background-color: rgba(0, 167, 111, 0.16);
-  color: #00a76f;
+  background-color: rgba(249, 115, 22, 0.16);
+  color: #f97316;
 }
 .nav-item-active::before {
   content: '';
@@ -281,7 +281,7 @@ html.dark .badge-pending { background-color: rgba(255, 171, 0, 0.16); color: #ff
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
-  background-color: #00a76f;
+  background-color: #f97316;
   border-radius: 0 4px 4px 0;
 }
 .nav-item-inactive { color: rgba(255, 255, 255, 0.5); }
@@ -329,10 +329,10 @@ html.dark tr:hover > .table-td { background-color: #1f2c36; }
    RECEIPT CARD
    ========================================= */
 .receipt-card {
-  background: linear-gradient(135deg, rgba(0, 167, 111, 0.05) 0%, #ffffff 100%);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.05) 0%, #ffffff 100%);
 }
 html.dark .receipt-card {
-  background: linear-gradient(135deg, rgba(0, 167, 111, 0.08) 0%, #1c252e 100%);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, #1c252e 100%);
 }
 
 /* =========================================
@@ -385,7 +385,7 @@ html.dark .glass {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #00a76f, #5be49b);
+  background: linear-gradient(135deg, #f97316, #fdba74);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -393,6 +393,6 @@ html.dark .glass {
 
 /* Background gradient utility */
 .bg-gradient-mixed {
-  background: linear-gradient(135deg, #ff5630 0%, #ffab00 50%, #00a76f 100%);
+  background: linear-gradient(135deg, #ff5630 0%, #ffab00 50%, #f97316 100%);
   color: white;
 }

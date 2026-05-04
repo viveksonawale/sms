@@ -135,7 +135,7 @@ export default function Expenses() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { label: t('totalThisMonth'), value: `₹${totalThisMonth.toLocaleString('en-IN')}`, icon: IndianRupee, color: '#00a76f', bg: 'rgba(0, 167, 111, 0.16)' },
+          { label: t('totalThisMonth'), value: `₹${totalThisMonth.toLocaleString('en-IN')}`, icon: IndianRupee, color: '#f97316', bg: 'rgba(249, 115, 22, 0.16)' },
           { label: 'Entries This Month', value: entriesThisMonth, icon: Calendar, color: '#00b8d9', bg: 'rgba(0, 184, 217, 0.16)' },
           { label: 'Total Collected', value: `₹${totalCollected.toLocaleString('en-IN')}`, icon: Receipt, color: '#8e33ff', bg: 'rgba(142, 51, 255, 0.16)' },
         ].map((stat, i) => (
@@ -222,7 +222,7 @@ export default function Expenses() {
                         <td style={{ padding: '16px' }}>
                           <span style={{
                             display: 'inline-flex', padding: '4px 8px', borderRadius: '6px',
-                            backgroundColor: 'rgba(0, 167, 111, 0.16)', color: '#00a76f',
+                            backgroundColor: 'rgba(249, 115, 22, 0.16)', color: '#f97316',
                             fontSize: '12px', fontWeight: 700
                           }}>
                             {exp.category}
@@ -296,7 +296,7 @@ export default function Expenses() {
                       style={{ 
                         height: '100%', 
                         width: `${(val / maxCategoryAmount) * 100}%`,
-                        backgroundColor: '#00a76f',
+                        backgroundColor: '#f97316',
                         borderRadius: '4px'
                       }} 
                     />

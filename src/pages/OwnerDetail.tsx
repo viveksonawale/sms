@@ -53,18 +53,29 @@ export default function OwnerDetail() {
     const todayMonthIdx = today.getMonth();
     const todayYear = today.getFullYear();
 
+    const MIN_YEAR = 2021;
+
     const isMonthDisabled = (idx: number) => {
       const monthStr = String(idx + 1).padStart(2, '0');
       const dateStr = `${viewYear}-${monthStr}`;
-      
+
+      // Block any year below 2021
+      if (viewYear < MIN_YEAR) return true;
+
       // Future validation — only block future months when allowFuture is NOT set
       if (!allowFuture) {
         if (viewYear > todayYear || (viewYear === todayYear && idx > todayMonthIdx)) return true;
       }
-      
-      // Min date validation (for To Month — cannot go before From Month)
-      if (minDate && dateStr < minDate) return true;
-      
+
+      // Min date validation (To Month must be >= From Month)
+      // Use numeric comparison: year*12+month so "2024-01" > "2023-12" works correctly
+      if (minDate) {
+        const [minY, minM] = minDate.split('-').map(Number);
+        const toValue = viewYear * 12 + (idx + 1);
+        const fromValue = minY * 12 + minM;
+        if (toValue < fromValue) return true;
+      }
+
       // Payment history validation — only for non-future months
       const d = new Date(dateStr + '-01');
       const alreadyPaid = existingPayments.some(p => {
@@ -75,7 +86,7 @@ export default function OwnerDetail() {
         const end = parts.length === 2 ? parsePDate(parts[1]) : start;
         return d >= start && d <= end;
       });
-      
+
       return alreadyPaid;
     };
 
@@ -94,8 +105,8 @@ export default function OwnerDetail() {
           className="input-field"
           style={{ 
             paddingLeft: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-            borderColor: isOpen ? '#00a76f' : undefined,
-            boxShadow: isOpen ? '0 0 0 3px rgba(0, 167, 111, 0.16)' : undefined,
+            borderColor: isOpen ? '#f97316' : undefined,
+            boxShadow: isOpen ? '0 0 0 3px rgba(249, 115, 22, 0.16)' : undefined,
             userSelect: 'none',
             position: 'relative' // Fix flying icons
           }}
@@ -121,12 +132,16 @@ export default function OwnerDetail() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <button 
-                  type="button" onClick={() => setViewYear(v => v - 1)}
+                  type="button"
+                  onClick={() => setViewYear(v => v - 1)}
+                  disabled={viewYear <= 2021}
                   style={{ 
                     width: '32px', height: '32px', borderRadius: '8px', 
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f4f6f8',
-                    border: 'none', color: textSecondary, cursor: 'pointer' 
+                    border: 'none', color: textSecondary,
+                    cursor: viewYear <= 2021 ? 'not-allowed' : 'pointer',
+                    opacity: viewYear <= 2021 ? 0.3 : 1,
                   }}
                 >
                   <ChevronLeft size={16} />
@@ -161,7 +176,7 @@ export default function OwnerDetail() {
                         padding: '10px 0', border: 'none', borderRadius: '10px',
                         fontSize: '13px', fontWeight: isActive ? 800 : 600,
                         cursor: isDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
-                        backgroundColor: isActive ? '#00a76f' : 'transparent',
+                        backgroundColor: isActive ? '#f97316' : 'transparent',
                         color: isActive ? '#ffffff' : (isDisabled ? (isDark ? '#3d4e5c' : '#dfe3e8') : textSecondary),
                         opacity: isDisabled ? 0.5 : 1,
                       }}
@@ -204,7 +219,7 @@ export default function OwnerDetail() {
 
   const [paymentFromDate, setPaymentFromDate] = useState(format(new Date(), 'yyyy-MM'));
   const [paymentToDate, setPaymentToDate] = useState(format(new Date(), 'yyyy-MM'));
-  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeletePaymentModal, setShowDeletePaymentModal] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
@@ -247,7 +262,7 @@ export default function OwnerDetail() {
   }
 
   const initials = owner.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-  const colors = ['#00a76f', '#00b8d9', '#ffab00', '#ff5630', '#8e33ff'];
+  const colors = ['#f97316', '#00b8d9', '#ffab00', '#ff5630', '#8e33ff'];
   const avatarColor = colors[owner.name.charCodeAt(0) % colors.length];
 
   const handleMarkAsPaid = (e: React.FormEvent) => {
@@ -391,7 +406,7 @@ export default function OwnerDetail() {
               {language === 'mr' && owner.nameMr ? owner.nameMr : owner.name}
             </h1>
             <p style={{ fontSize: '13px', color: textSecondary }}>
-              {t('flat')}: <span style={{ color: '#00a76f', fontWeight: 700 }}>{owner.flat}</span>
+              {t('flat')}: <span style={{ color: '#f97316', fontWeight: 700 }}>{owner.flat}</span>
             </p>
           </div>
         </div>
@@ -410,8 +425,8 @@ export default function OwnerDetail() {
                   display: 'flex', alignItems: 'center', gap: '6px',
                   fontSize: '12px', fontWeight: 700, padding: '5px 12px', borderRadius: '8px',
                   border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                  backgroundColor: isEditing ? '#f4f6f8' : 'rgba(0,167,111,0.1)',
-                  color: isEditing ? '#637381' : '#00a76f',
+                  backgroundColor: isEditing ? '#f4f6f8' : 'rgba(249, 115, 22,0.1)',
+                  color: isEditing ? '#637381' : '#f97316',
                 }}
               >
                 {isEditing ? <><X size={12} /> Cancel</> : <><Pencil size={12} /> {t('editOwner')}</>}
@@ -457,10 +472,10 @@ export default function OwnerDetail() {
                   <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                     <div style={{
                       width: '32px', height: '32px', borderRadius: '8px',
-                      backgroundColor: 'rgba(0,167,111,0.08)',
+                      backgroundColor: 'rgba(249, 115, 22,0.08)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     }}>
-                      <Icon size={14} style={{ color: '#00a76f' }} />
+                      <Icon size={14} style={{ color: '#f97316' }} />
                     </div>
                     <div>
                       <p style={{ fontSize: '11px', color: textSecondary, marginBottom: '2px' }}>{label}</p>
@@ -494,14 +509,14 @@ export default function OwnerDetail() {
           {/* Mark as Paid */}
           <div style={{
             backgroundColor: cardBg, borderRadius: '12px',
-            border: '1px solid rgba(0,167,111,0.2)',
+            border: '1px solid rgba(249, 115, 22,0.2)',
             boxShadow: cardShadow, overflow: 'visible',
           }}>
-            <div style={{ height: '4px', background: 'linear-gradient(90deg, #007867, #00a76f, #5be49b)', borderRadius: '12px 12px 0 0' }} />
+            <div style={{ height: '4px', background: 'linear-gradient(90deg, #ea580c, #f97316, #fdba74)', borderRadius: '12px 12px 0 0' }} />
             <div style={{ padding: '20px' }}>
               <h2 style={{ fontSize: '14px', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'rgba(0,167,111,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Check size={15} style={{ color: '#00a76f' }} />
+                <div style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'rgba(249, 115, 22,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Check size={15} style={{ color: '#f97316' }} />
                 </div>
                 {t('markAsPaid')}
               </h2>
@@ -531,9 +546,9 @@ export default function OwnerDetail() {
                     <IndianRupee size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab' }} />
                     <input
                       type="number" value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                      onChange={(e) => setPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))}
                       className="input-field" style={{ paddingLeft: '36px', fontWeight: 700, fontSize: '16px' }}
-                      min={1} required
+                      min={1} required placeholder="0"
                     />
                   </div>
                 </div>
@@ -549,8 +564,8 @@ export default function OwnerDetail() {
         <div className="lg:col-span-2 space-y-5">
           {/* Receipt Card */}
           {lastPayment && (
-            <div style={{ backgroundColor: cardBg, borderRadius: '12px', overflow: 'hidden', boxShadow: cardShadow, border: `1px solid rgba(0,167,111,0.2)` }}>
-              <div style={{ height: '4px', background: 'linear-gradient(90deg, #007867, #00a76f, #5be49b)' }} />
+            <div style={{ backgroundColor: cardBg, borderRadius: '12px', overflow: 'hidden', boxShadow: cardShadow, border: `1px solid rgba(249, 115, 22,0.2)` }}>
+              <div style={{ height: '4px', background: 'linear-gradient(90deg, #ea580c, #f97316, #fdba74)' }} />
               <div style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
                   <div>
@@ -620,7 +635,7 @@ export default function OwnerDetail() {
               </h2>
               <span style={{
                 fontSize: '11px', fontWeight: 700, padding: '3px 10px',
-                backgroundColor: 'rgba(0,167,111,0.1)', color: '#00a76f', borderRadius: '20px',
+                backgroundColor: 'rgba(249, 115, 22,0.1)', color: '#f97316', borderRadius: '20px',
               }}>
                 {sortedPayments.length} records
               </span>
@@ -630,11 +645,11 @@ export default function OwnerDetail() {
               <div style={{ padding: '64px 24px', textAlign: 'center' }}>
                 <div style={{
                   width: '56px', height: '56px', borderRadius: '12px',
-                  backgroundColor: 'rgba(0,167,111,0.08)',
+                  backgroundColor: 'rgba(249, 115, 22,0.08)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   margin: '0 auto 14px',
                 }}>
-                  <FileText size={24} style={{ color: '#00a76f' }} />
+                  <FileText size={24} style={{ color: '#f97316' }} />
                 </div>
                 <p style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>{t('noHistory')}</p>
                 <p style={{ fontSize: '13px', color: textSecondary, marginTop: '4px' }}>Mark a payment to see it here.</p>
@@ -659,7 +674,7 @@ export default function OwnerDetail() {
                           onClick={() => setSelectedPayment(payment)}
                           style={{ cursor: 'pointer' }}
                         >
-                          <td className="table-td" style={{ fontWeight: 700, color: '#00a76f', whiteSpace: 'nowrap' }}>
+                          <td className="table-td" style={{ fontWeight: 700, color: '#f97316', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <FileText size={14} style={{ opacity: 0.5 }} />
                               {payment.receiptNumber}
@@ -679,7 +694,7 @@ export default function OwnerDetail() {
                                 onClick={() => { generateReceiptPDF(payment, owner, societyName); toast(t('receiptGenerated'), 'success'); }}
                                 title={t('downloadReceipt')}
                                 style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#919eab' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,167,111,0.1)'; e.currentTarget.style.color = '#00a76f'; }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(249, 115, 22,0.1)'; e.currentTarget.style.color = '#f97316'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; }}
                               >
                                 <Download size={14} />
@@ -697,7 +712,7 @@ export default function OwnerDetail() {
                                 onClick={() => setEditingPayment(payment)}
                                 title={t('edit')}
                                 style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#919eab' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0,167,111,0.1)'; e.currentTarget.style.color = '#00a76f'; }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(249, 115, 22,0.1)'; e.currentTarget.style.color = '#f97316'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; }}
                               >
                                 <Pencil size={14} />
@@ -743,7 +758,7 @@ export default function OwnerDetail() {
                           style={{
                             width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer',
                             fontSize: '12px', fontWeight: 700,
-                            backgroundColor: page === currentPage ? '#00a76f' : 'transparent',
+                            backgroundColor: page === currentPage ? '#f97316' : 'transparent',
                             color: page === currentPage ? '#ffffff' : textSecondary,
                           }}
                         >
@@ -855,7 +870,7 @@ export default function OwnerDetail() {
             }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 {[
-                  { label: 'Receipt Number', value: selectedPayment.receiptNumber, color: '#00a76f', mono: true },
+                  { label: 'Receipt Number', value: selectedPayment.receiptNumber, color: '#f97316', mono: true },
                   { label: 'Status', value: 'Paid', isBadge: true, mono: false },
                   { label: 'Amount', value: `₹${selectedPayment.amount.toLocaleString('en-IN')}`, bold: true, mono: false },
                   { label: 'Period', value: selectedPayment.month, mono: false },

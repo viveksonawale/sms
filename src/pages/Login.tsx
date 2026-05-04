@@ -41,7 +41,7 @@ export default function Login() {
       {/* Left panel — branding */}
       <div
         className="hidden lg:flex flex-col items-center justify-center flex-1 relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #007867 0%, #00a76f 50%, #5be49b 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fdba74 100%)' }}
       >
         {/* Background orbs */}
         <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
@@ -52,13 +52,10 @@ export default function Login() {
             className="mx-auto flex items-center justify-center overflow-hidden"
             style={{
               width: '72px', height: '72px', borderRadius: '20px',
-              background: 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(8px)',
               marginBottom: '24px',
-              border: '1px solid rgba(255,255,255,0.3)',
             }}
           >
-            <img src="/images/shri.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src="/images/shri.png?v=orange" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '12px', lineHeight: 1.2 }}>
             {societyName}
@@ -90,12 +87,10 @@ export default function Login() {
             className="inline-flex items-center justify-center overflow-hidden"
             style={{
               width: '56px', height: '56px', borderRadius: '16px',
-              background: 'linear-gradient(135deg, #00a76f, #007867)',
-              boxShadow: 'rgba(0, 167, 111, 0.3) 0px 8px 20px 0px',
               marginBottom: '12px',
             }}
           >
-            <img src="/images/shri.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src="/images/shri.png?v=orange" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#1c252e' }}>{societyName}</h1>
         </div>

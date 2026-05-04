@@ -66,7 +66,7 @@ export default function Modal({
           <div style={{ height: '4px', background: 'linear-gradient(90deg, #ff5630, #ffab00)' }} />
         )}
         {!danger && (
-          <div style={{ height: '4px', background: 'linear-gradient(90deg, #00a76f, #5be49b)' }} />
+          <div style={{ height: '4px', background: 'linear-gradient(90deg, #f97316, #fdba74)' }} />
         )}
 
         <div style={{ padding: '24px' }}>
@@ -76,11 +76,11 @@ export default function Modal({
               <div
                 style={{
                   width: '40px', height: '40px', borderRadius: '10px',
-                  backgroundColor: danger ? 'rgba(255,86,48,0.1)' : 'rgba(0,167,111,0.1)',
+                  backgroundColor: danger ? 'rgba(255,86,48,0.1)' : 'rgba(249, 115, 22,0.1)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}
               >
-                <IconComponent size={18} style={{ color: danger ? '#ff5630' : '#00a76f' }} />
+                <IconComponent size={18} style={{ color: danger ? '#ff5630' : '#f97316' }} />
               </div>
               <h3 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary, lineHeight: 1.3 }}>
                 {title}
@@ -124,15 +124,15 @@ export default function Modal({
                   style={{
                     padding: '8px 20px', borderRadius: '8px',
                     fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                    backgroundColor: danger ? '#ff5630' : '#00a76f',
+                    backgroundColor: danger ? '#ff5630' : '#f97316',
                     border: 'none', color: '#ffffff',
                     boxShadow: danger
                       ? 'rgba(255,86,48,0.24) 0px 8px 16px 0px'
-                      : 'rgba(0,167,111,0.24) 0px 8px 16px 0px',
+                      : 'rgba(249, 115, 22,0.24) 0px 8px 16px 0px',
                     transition: 'background-color 0.15s, transform 0.1s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = danger ? '#b71d18' : '#007867')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = danger ? '#ff5630' : '#00a76f')}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = danger ? '#b71d18' : '#ea580c')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = danger ? '#ff5630' : '#f97316')}
                 >
                   {confirmLabel}
                 </button>

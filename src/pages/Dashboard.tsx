@@ -67,8 +67,8 @@ export default function Dashboard() {
       label: t('totalCollected'),
       value: `₹${stats.totalCollected.toLocaleString('en-IN')}`,
       icon: IndianRupee,
-      iconColor: '#00a76f',
-      iconBg: 'rgba(0, 167, 111, 0.12)',
+      iconColor: '#f97316',
+      iconBg: 'rgba(249, 115, 22, 0.12)',
       trend: 'Lifetime',
     },
   ];
@@ -178,8 +178,8 @@ export default function Dashboard() {
             <span
               style={{
                 fontSize: '12px', fontWeight: 700, padding: '3px 10px',
-                backgroundColor: 'rgba(0,167,111,0.12)',
-                color: '#00a76f', borderRadius: '20px',
+                backgroundColor: 'rgba(249, 115, 22,0.12)',
+                color: '#f97316', borderRadius: '20px',
               }}
             >
               {Math.round((stats.paidThisMonth / stats.totalOwners) * 100)}%
@@ -190,7 +190,7 @@ export default function Dashboard() {
               style={{
                 height: '100%',
                 width: `${(stats.paidThisMonth / stats.totalOwners) * 100}%`,
-                background: 'linear-gradient(90deg, #007867, #00a76f, #5be49b)',
+                background: 'linear-gradient(90deg, #ea580c, #f97316, #fdba74)',
                 borderRadius: '99px',
                 transition: 'width 0.7s ease',
               }}
@@ -235,12 +235,12 @@ export default function Dashboard() {
           <div
             style={{
               width: '64px', height: '64px', borderRadius: '16px',
-              backgroundColor: 'rgba(0,167,111,0.1)',
+              backgroundColor: 'rgba(249, 115, 22,0.1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 16px',
             }}
           >
-            <Building2 size={28} style={{ color: '#00a76f' }} />
+            <Building2 size={28} style={{ color: '#f97316' }} />
           </div>
           <p style={{ fontSize: '15px', fontWeight: 700, color: textPrimary, marginBottom: '6px' }}>
             {searchTerm ? t('noResultsFound') : t('noOwners')}
@@ -265,7 +265,7 @@ export default function Dashboard() {
               .split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
 
             // Deterministic avatar color from name
-            const colors = ['#00a76f', '#00b8d9', '#ffab00', '#ff5630', '#8e33ff'];
+            const colors = ['#f97316', '#00b8d9', '#ffab00', '#ff5630', '#8e33ff'];
             const colorIdx = owner.name.charCodeAt(0) % colors.length;
             const avatarColor = colors[colorIdx];
 
@@ -342,7 +342,7 @@ export default function Dashboard() {
                       ● {t('pending')}
                     </span>
                   )}
-                  <span className="text-xs font-semibold" style={{ color: '#00a76f' }}>View Details →</span>
+                  <span className="text-xs font-semibold" style={{ color: '#f97316' }}>View Details →</span>
                 </div>
               </div>
             );

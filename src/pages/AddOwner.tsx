@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { UserPlus, ArrowLeft, Calendar } from 'lucide-react';
+import { UserPlus, ArrowLeft } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useToast } from '../context/ToastContext';
 
@@ -14,12 +14,8 @@ export default function AddOwner() {
 
   const [formData, setFormData] = useState({
     name: '',
-    nameMr: '',
     flat: '',
     phone: '',
-    email: '',
-    monthlyAmount: '',
-    joinedDate: new Date().toISOString().split('T')[0],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -29,10 +25,6 @@ export default function AddOwner() {
     if (!formData.name.trim()) newErrors.name = 'Full name is required.';
     if (!formData.flat.trim()) newErrors.flat = 'Flat number is required.';
     if (!/^\d{10}$/.test(formData.phone)) newErrors.phone = 'Phone must be exactly 10 digits.';
-    if (!formData.email.includes('@')) newErrors.email = 'Enter a valid email address.';
-    if (!formData.monthlyAmount || Number(formData.monthlyAmount) <= 0)
-      newErrors.monthlyAmount = 'Enter a valid monthly amount.';
-    if (!formData.joinedDate) newErrors.joinedDate = 'Joined date is required.';
     return newErrors;
   };
 
@@ -46,12 +38,11 @@ export default function AddOwner() {
     const newOwner = {
       id: crypto.randomUUID(),
       name: formData.name.trim(),
-      nameMr: formData.nameMr.trim() || undefined,
       flat: formData.flat.trim().toUpperCase(),
       phone: `91${formData.phone}`,
-      email: formData.email.trim().toLowerCase(),
-      monthlyAmount: Number(formData.monthlyAmount),
-      joinedDate: formData.joinedDate,
+      email: '',
+      monthlyAmount: 0,
+      joinedDate: new Date().toISOString().split('T')[0],
       avatar: null,
     };
     addOwner(newOwner);
@@ -69,12 +60,8 @@ export default function AddOwner() {
     : '0 0 2px 0 rgba(145,158,171,0.2), 0 12px 24px -4px rgba(145,158,171,0.12)';
 
   const fields = [
-    { id: 'name', label: t('fullName'), type: 'text', key: 'name', placeholder: 'e.g. Rahul Sharma', span2: true, required: true },
-    { id: 'nameMr', label: t('fullNameMr'), type: 'text', key: 'nameMr', placeholder: 'e.g. राहुल शर्मा (Optional)', span2: true, required: false },
-    { id: 'flat', label: t('flat'), type: 'text', key: 'flat', placeholder: 'e.g. A-101', span2: false, required: true },
-    { id: 'email', label: t('email'), type: 'email', key: 'email', placeholder: 'owner@example.com', span2: false, required: true },
-    { id: 'monthlyAmount', label: `${t('monthlyAmount')} (₹)`, type: 'number', key: 'monthlyAmount', placeholder: '1500', span2: false, required: true },
-    { id: 'joinedDate', label: t('joinedDate'), type: 'date', key: 'joinedDate', placeholder: '', span2: false, required: true },
+    { id: 'name', label: t('fullName'), type: 'text', key: 'name', placeholder: '', span2: true, required: true },
+    { id: 'flat', label: t('flat'), type: 'text', key: 'flat', placeholder: '', span2: true, required: true },
   ];
 
   return (
@@ -100,7 +87,7 @@ export default function AddOwner() {
       {/* Form Card */}
       <div style={{ backgroundColor: cardBg, borderRadius: '12px', boxShadow: cardShadow, overflow: 'hidden' }}>
         {/* Card top accent */}
-        <div style={{ height: '4px', background: 'linear-gradient(90deg, #007867, #00a76f, #5be49b)' }} />
+        <div style={{ height: '4px', background: 'linear-gradient(90deg, #ea580c, #f97316, #fdba74)' }} />
 
         <div style={{ padding: '28px' }}>
           {/* Card header */}
@@ -111,10 +98,10 @@ export default function AddOwner() {
           }}>
             <div style={{
               width: '44px', height: '44px', borderRadius: '12px',
-              backgroundColor: 'rgba(0,167,111,0.1)',
+              backgroundColor: 'rgba(249, 115, 22,0.1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <UserPlus size={20} style={{ color: '#00a76f' }} />
+              <UserPlus size={20} style={{ color: '#f97316' }} />
             </div>
             <div>
               <p style={{ fontSize: '15px', fontWeight: 700, color: textPrimary }}>{t('newOwnerRegistration')}</p>
@@ -142,10 +129,8 @@ export default function AddOwner() {
                       className="input-field"
                       style={{
                         ...(errors[key] ? { borderColor: '#ff5630' } : {}),
-                        ...(type === 'date' ? { paddingLeft: '36px' } : {})
                       }}
                     />
-                    {type === 'date' && <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab', pointerEvents: 'none', zIndex: 10 }} />}
                   </div>
                   {errors[key] && (
                     <p style={{ fontSize: '12px', color: '#ff5630', marginTop: '5px' }}>{errors[key]}</p>
@@ -175,7 +160,7 @@ export default function AddOwner() {
                     id="phone"
                     type="tel"
                     maxLength={10}
-                    placeholder="98765 43210"
+                    placeholder=""
                     value={formData.phone}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, '');

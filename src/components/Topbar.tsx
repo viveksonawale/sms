@@ -77,11 +77,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             className="flex-shrink-0 flex items-center justify-center"
             style={{
               width: '28px', height: '28px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #00a76f, #007867)',
               overflow: 'hidden',
             }}
           >
-            <img src="/images/shri.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src="/images/shri.png?v=orange" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <span 
             className="font-bold truncate" 
@@ -114,7 +113,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             cursor: 'pointer',
           }}
         >
-          <Globe size={13} style={{ color: '#00a76f' }} />
+          <Globe size={13} style={{ color: '#f97316' }} />
           <span>{language === 'en' ? 'मर' : 'EN'}</span>
         </button>
 
@@ -138,8 +137,8 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
               className="flex items-center justify-center"
               style={{
                 width: '32px', height: '32px', borderRadius: '10px',
-                background: 'linear-gradient(135deg, #00a76f 0%, #007867 100%)',
-                boxShadow: 'rgba(0, 167, 111, 0.3) 0px 4px 8px 0px',
+                background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                boxShadow: 'rgba(249, 115, 22, 0.3) 0px 4px 8px 0px',
                 color: '#fff', fontSize: '13px', fontWeight: 800, flexShrink: 0,
               }}
             >

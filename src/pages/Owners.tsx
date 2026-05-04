@@ -87,12 +87,12 @@ export default function Owners() {
           <div
             style={{
               width: '64px', height: '64px', borderRadius: '16px',
-              backgroundColor: 'rgba(0,167,111,0.1)',
+              backgroundColor: 'rgba(249, 115, 22,0.1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 16px',
             }}
           >
-            <Users size={28} style={{ color: '#00a76f' }} />
+            <Users size={28} style={{ color: '#f97316' }} />
           </div>
           <p style={{ fontSize: '15px', fontWeight: 700, color: textPrimary, marginBottom: '6px' }}>
             {searchTerm ? t('noResultsFound') : t('noOwners')}
@@ -113,7 +113,7 @@ export default function Owners() {
             const initials = owner.name
               .split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
 
-            const colors = ['#00a76f', '#00b8d9', '#ffab00', '#ff5630', '#8e33ff'];
+            const colors = ['#f97316', '#00b8d9', '#ffab00', '#ff5630', '#8e33ff'];
             const colorIdx = owner.name.charCodeAt(0) % colors.length;
             const avatarColor = colors[colorIdx];
 
@@ -172,7 +172,7 @@ export default function Owners() {
                       ● Unpaid
                     </span>
                   )}
-                  <span className="text-xs font-semibold" style={{ color: '#00a76f' }}>View Details →</span>
+                  <span className="text-xs font-semibold" style={{ color: '#f97316' }}>View Details →</span>
                 </div>
               </div>
             );

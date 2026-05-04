@@ -74,12 +74,10 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 className="flex items-center justify-center flex-shrink-0"
                 style={{
                   width: '32px', height: '32px', borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #00a76f 0%, #007867 100%)',
-                  boxShadow: 'rgba(0, 167, 111, 0.3) 0px 4px 12px 0px',
                   overflow: 'hidden',
                 }}
               >
-                <img src="/images/shri.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src="/images/shri.png?v=orange" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
               {!sidebarCollapsed && (
                 <div className="min-w-0 transition-all duration-300 ease-in-out">
@@ -111,10 +109,10 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           <div style={{ padding: '16px 12px 8px' }} className="animate-in fade-in duration-300">
             <div
               style={{
-                background: 'rgba(0,167,111,0.12)',
+                background: 'rgba(249, 115, 22,0.12)',
                 borderRadius: '12px',
                 padding: '14px 16px',
-                border: '1px solid rgba(0,167,111,0.2)',
+                border: '1px solid rgba(249, 115, 22,0.2)',
               }}
             >
               <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', fontWeight: 600 }}>
@@ -132,16 +130,16 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 <div
                   style={{
                     width: '38px', height: '38px', borderRadius: '10px',
-                    background: 'rgba(0,167,111,0.25)',
+                    background: 'rgba(249, 115, 22,0.25)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
-                  <TrendingUp size={18} color="#5be49b" />
+                  <TrendingUp size={18} color="#fdba74" />
                 </div>
               </div>
               <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>Total Collected</p>
-                <p style={{ fontSize: '13px', fontWeight: 700, color: '#5be49b', marginTop: '2px' }}>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: '#fdba74', marginTop: '2px' }}>
                   ₹{totalCollected.toLocaleString('en-IN')}
                 </p>
               </div>
@@ -173,7 +171,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     <item.icon
                       size={20}
                       style={{ 
-                        color: isActive ? '#00a76f' : 'rgba(255,255,255,0.45)', 
+                        color: isActive ? '#f97316' : 'rgba(255,255,255,0.45)', 
                         flexShrink: 0,
                         transition: 'transform 0.2s ease',
                         margin: sidebarCollapsed ? '0 auto' : '0'
@@ -181,7 +179,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                       className={sidebarCollapsed ? 'scale-110' : ''}
                     />
                     {!sidebarCollapsed && (
-                      <span style={{ color: isActive ? '#00a76f' : 'rgba(255,255,255,0.65)', fontWeight: isActive ? 700 : 500 }} className="truncate">
+                      <span style={{ color: isActive ? '#f97316' : 'rgba(255,255,255,0.65)', fontWeight: isActive ? 700 : 500 }} className="truncate">
                         {item.label}
                       </span>
                     )}
@@ -192,49 +190,6 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           </div>
         </nav>
 
-        {/* ── Recent Owners (Hidden when collapsed) ── */}
-        {!sidebarCollapsed && owners.length > 0 && (
-          <div style={{ padding: '0 12px 8px' }} className="animate-in slide-in-from-bottom-2 duration-300">
-            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, padding: '8px 12px 6px' }}>
-              Recent Owners
-            </p>
-            <div className="space-y-0.5">
-              {owners.slice(0, 3).map((owner) => {
-                const initials = owner.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-                return (
-                  <button
-                    key={owner.id}
-                    onClick={() => { navigate(`/owners/${owner.id}`); setIsOpen(false); }}
-                    className="w-full flex items-center gap-3 rounded-lg transition-all group"
-                    style={{ padding: '8px 12px' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <div
-                      className="flex items-center justify-center flex-shrink-0 transition-all"
-                      style={{
-                        width: '32px', height: '32px', borderRadius: '8px',
-                        background: 'rgba(0,167,111,0.15)',
-                        color: '#5be49b',
-                        fontSize: '11px', fontWeight: 700,
-                      }}
-                    >
-                      {initials}
-                    </div>
-                    <div className="min-w-0 text-left">
-                      <p style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.65)' }} className="truncate group-hover:text-white transition-colors">
-                        {owner.name}
-                      </p>
-                      <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)' }}>
-                        {owner.flat}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ── Logout ── */}
         <div style={{ padding: '8px 12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
