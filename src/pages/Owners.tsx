@@ -13,7 +13,7 @@ export default function Owners() {
   const theme = useStore((state) => state.theme);
   const fetchOwners = useStore((state) => state.fetchOwners);
   const fetchPayments = useStore((state) => state.fetchPayments);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
