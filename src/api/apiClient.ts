@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useStore } from '../store/useStore';
 
 // Base URL for the Spring Boot backend
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://sms-backend-02eg.onrender.com/api';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
