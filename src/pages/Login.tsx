@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useToast } from '../context/ToastContext';
+import { AuthService } from '../api/auth.service';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -22,13 +23,19 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    await new Promise((res) => setTimeout(res, 600));
-    if (username === 'admin' && password === 'society@123') {
+    try {
+      const response = await AuthService.login({ username, password });
+      localStorage.setItem('token', response.token);
       setAuth(true);
       toast('Welcome back, Ramesh Sonawale!', 'success');
       navigate('/');
-    } else {
-      setError(t('invalidCredentials'));
+    } catch (err: any) {
+      console.error(err);
+      if (err.response && err.response.data && err.response.data.message) {
+        setError(err.response.data.message);
+      } else {
+        setError(t('invalidCredentials'));
+      }
       setIsLoading(false);
     }
   };
@@ -127,7 +134,7 @@ export default function Login() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
+                  placeholder="username"
                   className="input-field pl-10"
                   style={{ backgroundColor: '#ffffff', color: '#1c252e', borderColor: '#dfe3e8' }}
                   autoComplete="username"
@@ -148,7 +155,7 @@ export default function Login() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="society@123"
+                  placeholder='password'
                   className="input-field pl-10 pr-10"
                   style={{ backgroundColor: '#ffffff', color: '#1c252e', borderColor: '#dfe3e8' }}
                   autoComplete="current-password"
@@ -199,10 +206,6 @@ export default function Login() {
               ) : t('login')}
             </button>
           </form>
-
-          <p style={{ textAlign: 'center', fontSize: '12px', color: '#919eab', marginTop: '20px' }}>
-            Hint: <strong style={{ color: '#637381' }}>admin</strong> / <strong style={{ color: '#637381' }}>society@123</strong>
-          </p>
         </div>
       </div>
 

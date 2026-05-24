@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Menu, Sun, Moon, Globe, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
+import { AuthService } from '../api/auth.service';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -168,7 +169,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
               </div>
               <div>
                 <button 
-                  onClick={() => setAuth(false)}
+                  onClick={() => {
+                    AuthService.logout();
+                    setAuth(false);
+                  }}
                   className="w-full flex items-center gap-3 p-2 rounded-lg transition-colors hover:bg-red-50 text-red-500"
                   style={{ fontSize: '13px' }}
                 >

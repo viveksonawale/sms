@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutDashboard, Settings as SettingsIcon, LogOut, X, Users, TrendingUp, Receipt } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { AuthService } from '../api/auth.service';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   ];
 
   const handleLogout = () => {
+    AuthService.logout();
     setAuth(false);
     navigate('/login');
     setIsOpen(false);

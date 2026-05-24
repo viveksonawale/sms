@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
@@ -27,7 +27,13 @@ export default function Expenses() {
   const expenses = useStore((state) => state.expenses);
   const payments = useStore((state) => state.payments);
   const deleteExpense = useStore((state) => state.deleteExpense);
+  const fetchExpenses = useStore((state) => state.fetchExpenses);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchExpenses();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');

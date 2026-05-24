@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, Plus, Users, ChevronRight } from 'lucide-react';
@@ -11,6 +11,23 @@ export default function Owners() {
   const payments = useStore((state) => state.payments);
   const language = useStore((state) => state.language);
   const theme = useStore((state) => state.theme);
+  const fetchOwners = useStore((state) => state.fetchOwners);
+  const fetchPayments = useStore((state) => state.fetchPayments);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        await fetchOwners();
+        await fetchPayments();
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
 

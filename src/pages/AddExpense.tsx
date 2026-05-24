@@ -30,6 +30,7 @@ export default function AddExpense() {
   const expenses = useStore((state) => state.expenses);
   const addExpense = useStore((state) => state.addExpense);
   const updateExpense = useStore((state) => state.updateExpense);
+  const [submitting, setSubmitting] = useState(false);
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -59,7 +60,7 @@ export default function AddExpense() {
   const textSecondary = isDark ? '#919eab' : '#637381';
   const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8';
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !amount || !date || !paidTo) {
       toast('Please fill all required fields', 'error');
@@ -77,15 +78,22 @@ export default function AddExpense() {
       addedOn: isEditing ? (expenses.find(e => e.id === id)?.addedOn || new Date().toISOString()) : new Date().toISOString()
     };
 
-    if (isEditing) {
-      updateExpense(expenseData.id, expenseData);
-      toast('Expense updated', 'success');
-    } else {
-      addExpense(expenseData);
-      toast('Expense added', 'success');
+    setSubmitting(true);
+    try {
+      if (isEditing) {
+        await updateExpense(expenseData.id, expenseData);
+        toast('Expense updated', 'success');
+      } else {
+        await addExpense(expenseData);
+        toast('Expense added', 'success');
+      }
+      navigate('/expenses');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to save expense. Please try again.';
+      toast(msg, 'error');
+    } finally {
+      setSubmitting(false);
     }
-
-    navigate('/expenses');
   };
 
   return (
@@ -223,9 +231,10 @@ export default function AddExpense() {
               <button 
                 type="submit" 
                 className="btn-primary px-8 justify-center"
+                disabled={submitting}
               >
                 <Save size={18} />
-                {isEditing ? 'Update Expense' : 'Save Expense'}
+                {submitting ? 'Saving...' : (isEditing ? 'Update Expense' : 'Save Expense')}
               </button>
             </div>
           </form>

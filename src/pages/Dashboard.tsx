@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
@@ -12,6 +12,19 @@ export default function Dashboard() {
   const payments = useStore((state) => state.payments);
   const language = useStore((state) => state.language);
   const theme = useStore((state) => state.theme);
+  const fetchOwners = useStore((state) => state.fetchOwners);
+  const fetchExpenses = useStore((state) => state.fetchExpenses);
+  const fetchPayments = useStore((state) => state.fetchPayments);
+
+  useEffect(() => {
+    const load = async () => {
+      await fetchOwners();
+      await fetchPayments();
+      fetchExpenses();
+    };
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
 

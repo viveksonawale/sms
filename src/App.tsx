@@ -47,6 +47,11 @@ function App() {
   const language = useStore((state) => state.language);
   const { i18n } = useTranslation();
 
+  const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const fetchOwners = useStore((state) => state.fetchOwners);
+  const fetchExpenses = useStore((state) => state.fetchExpenses);
+  const fetchPayments = useStore((state) => state.fetchPayments);
+
   // Wait for Zustand to rehydrate from localStorage before rendering routes.
   const [hydrated, setHydrated] = useState(false);
 
@@ -58,6 +63,16 @@ function App() {
       return unsub;
     }
   }, []);
+
+  // Fetch all backend data once authenticated
+  useEffect(() => {
+    if (isAuthenticated && hydrated) {
+      fetchOwners().then(() => {
+        fetchPayments();
+      });
+      fetchExpenses();
+    }
+  }, [isAuthenticated, hydrated, fetchOwners, fetchExpenses, fetchPayments]);
 
   // Sync theme class on <html>
   useEffect(() => {

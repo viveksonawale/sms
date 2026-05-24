@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { format, startOfMonth, isSameMonth, eachMonthOfInterval } from 'date-fns';
@@ -8,9 +8,10 @@ import {
   Phone, Calendar, IndianRupee, Home,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { generateReceiptPDF } from '../utils/pdf';
+
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
+import { ReceiptService } from '../api/receipt.service';
 
 
 // Improved WhatsApp Brand Icon
@@ -216,10 +217,41 @@ export default function OwnerDetail() {
   const nextReceiptNumber = useStore((state) => state.nextReceiptNumber);
   const societyName = useStore((state) => state.societyName);
   const language = useStore((state) => state.language);
+  const fetchOwners = useStore((state) => state.fetchOwners);
+  const fetchPayments = useStore((state) => state.fetchPayments);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch owner data on mount to ensure it's loaded
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        await fetchOwners();
+        await fetchPayments();
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const [paymentFromDate, setPaymentFromDate] = useState(format(new Date(), 'yyyy-MM'));
   const [paymentToDate, setPaymentToDate] = useState(format(new Date(), 'yyyy-MM'));
   const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
+  const [paymentTransactionId, setPaymentTransactionId] = useState('');
+
+  const totalMonthsPaid = useMemo(() => {
+    try {
+      const start = new Date(paymentFromDate + '-01T12:00:00');
+      const end = new Date(paymentToDate + '-01T12:00:00');
+      if (start > end) return 0;
+      return eachMonthOfInterval({ start, end }).length;
+    } catch {
+      return 0;
+    }
+  }, [paymentFromDate, paymentToDate]);
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeletePaymentModal, setShowDeletePaymentModal] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
@@ -228,6 +260,41 @@ export default function OwnerDetail() {
   const [selectedPayment, setSelectedPayment] = useState<typeof ownerPayments[0] | null>(null);
   const [lastPayment, setLastPayment] = useState<typeof ownerPayments[0] | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const handleDownloadReceipt = async (payment: typeof ownerPayments[0]) => {
+    if (payment.status !== 'paid') {
+      toast('No receipt available — payment is not marked as paid.', 'error');
+      return;
+    }
+    try {
+      toast('Downloading receipt from server...', 'info');
+      const receipt = await ReceiptService.getReceiptByMaintenance(Number(payment.id));
+      await ReceiptService.downloadReceiptPdf(receipt.id);
+      toast('Receipt downloaded successfully.', 'success');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Receipt not found on server.';
+      toast(msg, 'error');
+    }
+  };
+
+  const [showDeleteReceiptModal, setShowDeleteReceiptModal] = useState(false);
+  const [receiptToDelete, setReceiptToDelete] = useState<string | null>(null);
+
+  const handleDeleteReceipt = async () => {
+    if (!receiptToDelete) return;
+    try {
+      const receipt = await ReceiptService.getReceiptByMaintenance(Number(receiptToDelete));
+      await ReceiptService.deleteReceipt(receipt.id);
+      toast('Receipt deleted. Payment reset to pending.', 'success');
+      setShowDeleteReceiptModal(false);
+      setReceiptToDelete(null);
+      await fetchPayments();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to delete receipt.';
+      toast(msg, 'error');
+      setShowDeleteReceiptModal(false);
+    }
+  };
 
   const [editForm, setEditForm] = useState({
     name: owner?.name ?? '',
@@ -240,7 +307,11 @@ export default function OwnerDetail() {
   });
 
   const sortedPayments = useMemo(
-    () => [...ownerPayments].sort((a, b) => new Date(b.paidOn).getTime() - new Date(a.paidOn).getTime()),
+    () => [...ownerPayments].sort((a, b) => {
+      const timeA = a.paidOn ? new Date(a.paidOn).getTime() : 0;
+      const timeB = b.paidOn ? new Date(b.paidOn).getTime() : 0;
+      return timeB - timeA;
+    }),
     [ownerPayments]
   );
 
@@ -251,12 +322,22 @@ export default function OwnerDetail() {
     ? '0 0 2px 0 rgba(0,0,0,0.3), 0 12px 24px -4px rgba(0,0,0,0.2)'
     : '0 0 2px 0 rgba(145,158,171,0.2), 0 12px 24px -4px rgba(145,158,171,0.12)';
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px', textAlign: 'center', gap: '16px' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '3px solid #f97316', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ fontSize: '14px', color: textSecondary }}>Loading owner details...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   if (!owner) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px', textAlign: 'center', gap: '16px' }}>
         <FileText size={48} style={{ color: '#c4cdd5' }} />
         <p style={{ fontSize: '16px', fontWeight: 700, color: textPrimary }}>Owner not found</p>
-        <button onClick={() => navigate('/')} className="btn-primary">{t('dashboard')}</button>
+        <button onClick={() => navigate('/owners')} className="btn-primary">{t('owners')}</button>
       </div>
     );
   }
@@ -265,7 +346,7 @@ export default function OwnerDetail() {
   const colors = ['#f97316', '#00b8d9', '#ffab00', '#ff5630', '#8e33ff'];
   const avatarColor = colors[owner.name.charCodeAt(0) % colors.length];
 
-  const handleMarkAsPaid = (e: React.FormEvent) => {
+  const handleMarkAsPaid = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate amount
@@ -334,15 +415,35 @@ export default function OwnerDetail() {
 
     const rcpNum = nextReceiptNumber();
     useStore.setState((s) => ({ receiptCounter: s.receiptCounter + 1 }));
-    const newPayment = {
-      id: crypto.randomUUID(), ownerId: owner.id, month: period,
+    const tempPayment = {
+      id: '',  // placeholder — will be replaced with real backend ID after fetch
+      ownerId: owner.id, month: period,
       amount: Number(paymentAmount), paidOn: new Date().toISOString(),
       receiptNumber: rcpNum, status: 'paid' as const,
+      transactionId: paymentTransactionId || undefined,
     };
-    addPayment(newPayment);
-    setLastPayment(newPayment);
-    toast(t('paymentConfirmed'), 'success');
+    try {
+      await addPayment(tempPayment, { fromDate: paymentFromDate, toDate: paymentToDate });
+      // After fetchPayments completes inside addPayment, get the real payment from the store
+      // by finding the most recently added paid payment for this owner
+      const freshPayments = useStore.getState().payments;
+      const freshOwnerPayments = freshPayments.filter(
+        (p) => p.ownerId === owner.id && p.status === 'paid'
+      );
+      // Pick the payment that best matches: same fromDate month
+      const matched = freshOwnerPayments.find((p) => {
+        const monthStr = p.month || '';
+        return monthStr.includes(format(start, 'MMM yyyy')) || 
+               monthStr.startsWith(format(start, 'MMMM yyyy'));
+      }) || freshOwnerPayments[freshOwnerPayments.length - 1];
+      setLastPayment(matched || null);
+      toast(t('paymentConfirmed'), 'success');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to record payment.';
+      toast(msg, 'error');
+    }
     setCurrentPage(1);
+    setPaymentTransactionId('');
   };
 
   const handleDelete = () => { deleteOwner(owner.id); toast(`${owner.name} has been removed.`, 'success'); navigate('/'); };
@@ -352,11 +453,60 @@ export default function OwnerDetail() {
     setIsEditing(false);
     toast(t('save') + ' successful!', 'success');
   };
-  const sendWhatsApp = (payment: typeof ownerPayments[0]) => {
-    const dateStr = format(new Date(payment.paidOn), 'dd MMM yyyy');
-    const text = encodeURIComponent(`Hello ${owner.name},\n\nWe have received your society maintenance payment.\n\nReceipt No: ${payment.receiptNumber}\nPeriod: ${payment.month}\nAmount: ₹${payment.amount.toLocaleString('en-IN')}\nPaid On: ${dateStr}\n\nThank you!\n— ${societyName}`);
-    window.open(`https://wa.me/${owner.phone}?text=${text}`, '_blank');
+  const sendWhatsApp = async (payment: typeof ownerPayments[0]) => {
+    if (payment.status !== 'paid') {
+      toast('No receipt available — payment is not marked as paid.', 'error');
+      return;
+    }
+
+    const dateStr = payment.paidOn ? format(new Date(payment.paidOn), 'dd MMM yyyy') : '';
+    const fallbackText = encodeURIComponent(
+      `Hello ${owner.name},\n\nPlease find attached your society maintenance receipt.\n\nReceipt No: ${payment.receiptNumber}\nPeriod: ${payment.month}\nAmount: ₹${payment.amount.toLocaleString('en-IN')}\nPaid On: ${dateStr}\n\nThank you!\n— ${societyName}`
+    );
+
+    try {
+      toast('Fetching receipt PDF...', 'info');
+      const receipt = await ReceiptService.getReceiptByMaintenance(Number(payment.id));
+      const { blob, filename } = await ReceiptService.getReceiptBlob(receipt.id);
+      const file = new File([blob], filename, { type: 'application/pdf' });
+
+      // Try Web Share API with file (works on mobile — Android/iOS)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Receipt — ${payment.receiptNumber}`,
+          text: `${societyName} — Maintenance Receipt\nReceipt No: ${payment.receiptNumber}\nPeriod: ${payment.month}\nAmount: ₹${payment.amount.toLocaleString('en-IN')}`,
+          files: [file],
+        });
+        toast('Receipt shared successfully!', 'success');
+      } else {
+        // Desktop fallback: download the PDF first, then open WhatsApp with text
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        // Then open WhatsApp with instructions to attach the downloaded file
+        const desktopText = encodeURIComponent(
+          `Hello ${owner.name},\n\nPlease find your maintenance receipt (PDF just downloaded — please attach it).\n\nReceipt No: ${payment.receiptNumber}\nPeriod: ${payment.month}\nAmount: ₹${payment.amount.toLocaleString('en-IN')}\nPaid On: ${dateStr}\n\nThank you!\n— ${societyName}`
+        );
+        const phone = owner.phone.replace(/\D/g, '');
+        window.open(`https://wa.me/${phone}?text=${desktopText}`, '_blank');
+        toast('PDF downloaded! Attach it in the WhatsApp window that opened.', 'success');
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return; // User cancelled share sheet — not an error
+      console.error('WhatsApp share error:', err);
+      // Final fallback: just open WhatsApp with text
+      const phone = owner.phone.replace(/\D/g, '');
+      window.open(`https://wa.me/${phone}?text=${fallbackText}`, '_blank');
+      toast('Could not fetch PDF. Sending text message instead.', 'error');
+    }
   };
+
 
   const handleEditPayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -540,6 +690,29 @@ export default function OwnerDetail() {
                     allowFuture
                   />
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                    <label className="label">Total Months</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text" value={`${totalMonthsPaid} Month${totalMonthsPaid !== 1 ? 's' : ''}`}
+                        readOnly
+                        className="input-field" style={{ fontWeight: 700, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f9fafb', color: textSecondary, cursor: 'not-allowed' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                    <label className="label" style={{ whiteSpace: 'nowrap' }}>Transaction ID <span style={{ fontWeight: 400, opacity: 0.7 }}>(Optional)</span></label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text" value={paymentTransactionId}
+                        onChange={(e) => setPaymentTransactionId(e.target.value)}
+                        className="input-field" style={{ fontWeight: 500 }}
+                        placeholder="e.g. TXN12345"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div>
                   <label className="label">{t('amount')} (₹)</label>
                   <div style={{ position: 'relative' }}>
@@ -584,7 +757,7 @@ export default function OwnerDetail() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                   {[
                     { label: t('receiptNo'), value: lastPayment.receiptNumber },
-                    { label: t('paidOn'), value: format(new Date(lastPayment.paidOn), 'dd MMMM yyyy') },
+                    { label: t('paidOn'), value: lastPayment.paidOn ? format(new Date(lastPayment.paidOn), 'dd MMMM yyyy') : 'Pending' },
                     { label: t('owner'), value: owner.name },
                     { label: t('flat'), value: owner.flat },
                     { label: 'Period', value: lastPayment.month },
@@ -599,7 +772,7 @@ export default function OwnerDetail() {
 
                 <div style={{ display: 'flex', gap: '12px', paddingTop: '16px', borderTop: `1px solid ${borderColor}` }}>
                   <button
-                    onClick={() => { generateReceiptPDF(lastPayment, owner, societyName); toast(t('receiptGenerated'), 'success'); }}
+                    onClick={() => handleDownloadReceipt(lastPayment)}
                     className="btn-primary flex-1 justify-center"
                     style={{ padding: '10px' }}
                   >
@@ -683,7 +856,7 @@ export default function OwnerDetail() {
                           <td className="table-td" style={{ whiteSpace: 'nowrap', maxWidth: '180px' }}>{payment.month}</td>
                           <td className="table-td" style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>₹{payment.amount.toLocaleString('en-IN')}</td>
                           <td className="table-td" style={{ color: textSecondary, whiteSpace: 'nowrap' }}>
-                            {format(new Date(payment.paidOn), 'dd MMM yyyy')}
+                            {payment.paidOn ? format(new Date(payment.paidOn), 'dd MMM yyyy') : 'Pending'}
                           </td>
                           <td className="table-td">
                             <div
@@ -691,11 +864,12 @@ export default function OwnerDetail() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
-                                onClick={() => { generateReceiptPDF(payment, owner, societyName); toast(t('receiptGenerated'), 'success'); }}
+                                onClick={() => handleDownloadReceipt(payment)}
                                 title={t('downloadReceipt')}
-                                style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#919eab' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(249, 115, 22,0.1)'; e.currentTarget.style.color = '#f97316'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; }}
+                                disabled={payment.status !== 'paid'}
+                                style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: payment.status !== 'paid' ? 'not-allowed' : 'pointer', color: payment.status !== 'paid' ? '#c4cdd5' : '#919eab', opacity: payment.status !== 'paid' ? 0.4 : 1 }}
+                                onMouseEnter={(e) => { if (payment.status === 'paid') { e.currentTarget.style.backgroundColor = 'rgba(249, 115, 22,0.1)'; e.currentTarget.style.color = '#f97316'; } }}
+                                onMouseLeave={(e) => { if (payment.status === 'paid') { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; } }}
                               >
                                 <Download size={14} />
                               </button>
@@ -717,6 +891,17 @@ export default function OwnerDetail() {
                               >
                                 <Pencil size={14} />
                               </button>
+                              {payment.status === 'paid' && (
+                                <button
+                                  onClick={() => { setReceiptToDelete(payment.id); setShowDeleteReceiptModal(true); }}
+                                  title="Delete Receipt"
+                                  style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#919eab' }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,171,0,0.1)'; e.currentTarget.style.color = '#ffab00'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; }}
+                                >
+                                  <FileText size={14} />
+                                </button>
+                              )}
                               <button
                                 onClick={() => { setPaymentToDelete(payment.id); setShowDeletePaymentModal(true); }}
                                 title={t('delete')}
@@ -806,6 +991,17 @@ export default function OwnerDetail() {
         danger
       />
 
+      <Modal
+        isOpen={showDeleteReceiptModal}
+        onClose={() => { setShowDeleteReceiptModal(false); setReceiptToDelete(null); }}
+        onConfirm={handleDeleteReceipt}
+        title="Delete Receipt"
+        message="Are you sure you want to delete this receipt? The payment will be reset to PENDING and can be re-recorded."
+        confirmLabel="Delete Receipt"
+        cancelLabel="Cancel"
+        danger
+      />
+
       {editingPayment && (
         <Modal
           isOpen={true}
@@ -837,8 +1033,8 @@ export default function OwnerDetail() {
               <label className="label">Paid On</label>
               <input
                 type="date"
-                value={format(new Date(editingPayment.paidOn), 'yyyy-MM-dd')}
-                onChange={(e) => setEditingPayment({ ...editingPayment, paidOn: new Date(e.target.value).toISOString() })}
+                value={editingPayment.paidOn ? format(new Date(editingPayment.paidOn), 'yyyy-MM-dd') : ''}
+                onChange={(e) => setEditingPayment({ ...editingPayment, paidOn: e.target.value ? new Date(e.target.value).toISOString() : '' })}
                 className="input-field"
                 required
               />
@@ -871,10 +1067,10 @@ export default function OwnerDetail() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 {[
                   { label: 'Receipt Number', value: selectedPayment.receiptNumber, color: '#f97316', mono: true },
-                  { label: 'Status', value: 'Paid', isBadge: true, mono: false },
+                  { label: 'Status', value: selectedPayment.status === 'paid' ? 'Paid' : 'Pending', isBadge: true, mono: false },
                   { label: 'Amount', value: `₹${selectedPayment.amount.toLocaleString('en-IN')}`, bold: true, mono: false },
                   { label: 'Period', value: selectedPayment.month, mono: false },
-                  { label: 'Paid On', value: format(new Date(selectedPayment.paidOn), 'dd MMMM yyyy'), mono: false },
+                  { label: 'Paid On', value: selectedPayment.paidOn ? format(new Date(selectedPayment.paidOn), 'dd MMMM yyyy') : 'Pending', mono: false },
                 ].map((item) => (
                   <div key={item.label}>
                     <p style={{ fontSize: '11px', color: textSecondary, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -902,7 +1098,7 @@ export default function OwnerDetail() {
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <button
-                onClick={() => { generateReceiptPDF(selectedPayment, owner, societyName); toast(t('receiptGenerated'), 'success'); }}
+                onClick={() => handleDownloadReceipt(selectedPayment)}
                 className="btn-white w-full justify-center"
               >
                 <Download size={14} /> Download PDF

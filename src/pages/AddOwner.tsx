@@ -11,6 +11,7 @@ export default function AddOwner() {
   const addOwner = useStore((state) => state.addOwner);
   const theme = useStore((state) => state.theme);
   const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -28,7 +29,7 @@ export default function AddOwner() {
     return newErrors;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -39,15 +40,23 @@ export default function AddOwner() {
       id: crypto.randomUUID(),
       name: formData.name.trim(),
       flat: formData.flat.trim().toUpperCase(),
-      phone: `91${formData.phone}`,
+      phone: formData.phone,
       email: '',
       monthlyAmount: 0,
       joinedDate: new Date().toISOString().split('T')[0],
       avatar: null,
     };
-    addOwner(newOwner);
-    toast(`${newOwner.name} has been added!`, 'success');
-    navigate('/');
+    setSubmitting(true);
+    try {
+      await addOwner(newOwner);
+      toast(`${newOwner.name} has been added!`, 'success');
+      navigate('/owners');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to add owner. Please try again.';
+      toast(msg, 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isDark = theme === 'dark';
@@ -189,14 +198,14 @@ export default function AddOwner() {
             }}>
               <button
                 type="button"
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/owners')}
                 className="btn-ghost"
               >
                 {t('cancel')}
               </button>
-              <button type="submit" className="btn-primary">
+              <button type="submit" className="btn-primary" disabled={submitting}>
                 <UserPlus size={15} />
-                {t('save')} Owner
+                {submitting ? 'Saving...' : `${t('save')} Owner`}
               </button>
             </div>
           </form>

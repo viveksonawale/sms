@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { OwnerService } from '../api/owner.service';
+import { ExpenseService } from '../api/expense.service';
+import { MaintenanceService } from '../api/maintenance.service';
 
 export interface Owner {
   id: string;
@@ -21,6 +24,7 @@ export interface Payment {
   paidOn: string;
   receiptNumber: string;
   status: 'paid' | 'pending';
+  transactionId?: string;
 }
 
 export interface Expense {
@@ -49,96 +53,268 @@ interface StoreState {
   setLanguage: (lang: 'en' | 'mr') => void;
   setSocietyName: (name: string) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  addOwner: (owner: Owner) => void;
-  updateOwner: (id: string, updated: Partial<Owner>) => void;
-  deleteOwner: (id: string) => void;
-  addPayment: (payment: Payment) => void;
-  updatePayment: (id: string, updated: Partial<Payment>) => void;
-  deletePayment: (id: string) => void;
+  fetchOwners: () => Promise<void>;
+  fetchExpenses: () => Promise<void>;
+  fetchPayments: () => Promise<void>;
+  addOwner: (owner: Owner) => Promise<void>;
+  updateOwner: (id: string, updated: Partial<Owner>) => Promise<void>;
+  deleteOwner: (id: string) => Promise<void>;
+  addPayment: (payment: Payment, extra?: { fromDate: string; toDate: string }) => Promise<void>;
+  updatePayment: (id: string, updated: Partial<Payment>) => Promise<void>;
+  deletePayment: (id: string) => Promise<void>;
   nextReceiptNumber: () => string;
-  addExpense: (expense: Expense) => void;
-  updateExpense: (id: string, updated: Partial<Expense>) => void;
-  deleteExpense: (id: string) => void;
+  addExpense: (expense: Expense) => Promise<void>;
+  updateExpense: (id: string, updated: Partial<Expense>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
 }
 
-const seedOwners: Owner[] = [
-  { id: '1', name: 'Rahul Sharma', nameMr: 'राहुल शर्मा', flat: 'A-101', phone: '919876543210', email: 'rahul@example.com', monthlyAmount: 1500, joinedDate: '2023-01-15', avatar: null },
-  { id: '2', name: 'Priya Desai', nameMr: 'प्रिया देसाई', flat: 'A-102', phone: '919876543211', email: 'priya@example.com', monthlyAmount: 1500, joinedDate: '2023-02-20', avatar: null },
-  { id: '3', name: 'Amit Patel', nameMr: 'अमित पटेल', flat: 'B-201', phone: '919876543212', email: 'amit@example.com', monthlyAmount: 2000, joinedDate: '2022-11-05', avatar: null },
-  { id: '4', name: 'Sneha Joshi', nameMr: 'स्नेहा जोशी', flat: 'B-202', phone: '919876543213', email: 'sneha@example.com', monthlyAmount: 2000, joinedDate: '2024-03-10', avatar: null },
-  { id: '5', name: 'Vikram Singh', nameMr: 'विक्रम सिंग', flat: 'C-301', phone: '919876543214', email: 'vikram@example.com', monthlyAmount: 2500, joinedDate: '2021-08-22', avatar: null },
-  { id: '6', name: 'Anjali Kadam', nameMr: 'अंजली कदम', flat: 'C-302', phone: '919876543215', email: 'anjali@example.com', monthlyAmount: 2500, joinedDate: '2023-05-18', avatar: null },
-];
+const mapOwnerToFrontend = (o: any): Owner => ({
+  id: String(o.id),
+  name: o.name,
+  nameMr: o.nameInMarathi || '',
+  flat: o.flatNumber,
+  phone: o.phoneNo,
+  email: '',
+  monthlyAmount: 2500, // standard default
+  joinedDate: new Date().toISOString().split('T')[0],
+  avatar: null,
+});
 
-const seedPayments: Payment[] = [
-  { id: 'p1', ownerId: '1', month: 'April 2025', amount: 1500, paidOn: '2025-04-05T10:00:00Z', receiptNumber: 'RCP-2025-001', status: 'paid' },
-  { id: 'p2', ownerId: '3', month: 'April 2025', amount: 2000, paidOn: '2025-04-10T14:30:00Z', receiptNumber: 'RCP-2025-002', status: 'paid' },
-  { id: 'p3', ownerId: '5', month: 'April 2025', amount: 2500, paidOn: '2025-04-12T09:15:00Z', receiptNumber: 'RCP-2025-003', status: 'paid' },
-];
+const mapExpenseToFrontend = (e: any): Expense => ({
+  id: String(e.id),
+  title: e.title,
+  category: e.category,
+  amount: Number(e.amount),
+  date: e.date,
+  paidTo: e.paidTo,
+  note: e.note || '',
+  addedOn: e.date + 'T00:00:00Z',
+});
 
-const seedExpenses: Expense[] = [
-  { id: 'e1', title: 'Lift Repair', category: 'Maintenance & Repair', amount: 4500, date: '2025-04-02', paidTo: 'Ganesh Electricals', note: 'Monthly service and wire replace', addedOn: '2025-04-02T10:00:00Z' },
-  { id: 'e2', title: 'Sweeper Salary', category: 'Cleaning & Housekeeping', amount: 2000, date: '2025-04-05', paidTo: 'Ramesh Bhai', note: 'March 2025 Salary', addedOn: '2025-04-05T10:00:00Z' },
-  { id: 'e3', title: 'Society Light Bill', category: 'Electricity', amount: 1800, date: '2025-04-10', paidTo: 'MSEDCL', note: 'Bill for common areas', addedOn: '2025-04-10T10:00:00Z' },
-  { id: 'e4', title: 'Diwali Decoration', category: 'Festival & Events', amount: 3200, date: '2024-11-10', paidTo: 'Local Shop', note: 'Lights and flowers', addedOn: '2024-11-10T10:00:00Z' },
-  { id: 'e5', title: 'Watchman Salary', category: 'Security', amount: 5000, date: '2025-04-05', paidTo: 'Suresh Patil', note: 'March 2025 Salary', addedOn: '2025-04-05T10:00:00Z' },
-];
+const mapMaintenanceToFrontend = (m: any): Payment => {
+  let monthStr = 'Maintenance';
+  if (m.fromDate) {
+    // Parse fromDate string safely
+    const [year, month] = m.fromDate.split('-').map(Number);
+    const d = new Date(year, month - 1, 1);
+    monthStr = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    
+    if (m.toDate && m.fromDate !== m.toDate) {
+      const [toYear, toMonth] = m.toDate.split('-').map(Number);
+      const toD = new Date(toYear, toMonth - 1, 1);
+      if (m.fromDate.substring(0, 7) !== m.toDate.substring(0, 7)) {
+        monthStr = `${d.toLocaleString('en-US', { month: 'short', year: 'numeric' })} - ${toD.toLocaleString('en-US', { month: 'short', year: 'numeric' })}`;
+      }
+    }
+  }
+  return {
+    id: String(m.id),
+    ownerId: String(m.ownerId),
+    month: monthStr,
+    amount: Number(m.amount),
+    paidOn: m.paymentDate ? m.paymentDate + 'T12:00:00Z' : '',
+    receiptNumber: m.status === 'PAID' ? `RCP-${String(m.id).padStart(4, '0')}` : '',
+    status: m.status === 'PAID' ? 'paid' : 'pending',
+    transactionId: m.transactionId || undefined,
+  };
+};
 
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
-      owners: seedOwners,
-      payments: seedPayments,
-      expenses: seedExpenses,
+      owners: [],
+      payments: [],
+      expenses: [],
       isAuthenticated: false,
       theme: 'light',
       language: 'en',
       societyName: 'Shri Sai Apartment',
-      receiptCounter: 4, // next available: RCP-2025-004
+      receiptCounter: 1,
       sidebarCollapsed: false,
+
       setAuth: (status) => set({ isAuthenticated: status }),
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
       setSocietyName: (societyName) => set({ societyName }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
-      addOwner: (owner) => set((state) => ({ owners: [...state.owners, owner] })),
-      updateOwner: (id, updated) =>
-        set((state) => ({
-          owners: state.owners.map((o) => (o.id === id ? { ...o, ...updated } : o)),
-        })),
-      deleteOwner: (id) =>
-        set((state) => ({
-          owners: state.owners.filter((o) => o.id !== id),
-          payments: state.payments.filter((p) => p.ownerId !== id),
-        })),
-      addPayment: (payment) =>
-        set((state) => ({ payments: [...state.payments, payment] })),
-      updatePayment: (id, updated) =>
-        set((state) => ({
-          payments: state.payments.map((p) => (p.id === id ? { ...p, ...updated } : p)),
-        })),
-      deletePayment: (id) =>
-        set((state) => ({
-          payments: state.payments.filter((p) => p.id !== id),
-        })),
+
+      fetchOwners: async () => {
+        try {
+          const ownersData = await OwnerService.getAllOwners();
+          set({ owners: ownersData.map(mapOwnerToFrontend) });
+        } catch (err) {
+          console.error('Failed to fetch owners:', err);
+        }
+      },
+
+      fetchExpenses: async () => {
+        try {
+          const expensesData = await ExpenseService.getAllExpenses();
+          set({ expenses: expensesData.map(mapExpenseToFrontend) });
+        } catch (err) {
+          console.error('Failed to fetch expenses:', err);
+        }
+      },
+
+      fetchPayments: async () => {
+        try {
+          const owners = get().owners;
+          const allMaintenances = await Promise.all(
+            owners.map((o) => MaintenanceService.getByOwner(Number(o.id)).catch(() => []))
+          );
+          const flatMaintenances = allMaintenances.flat();
+          set({ payments: flatMaintenances.map(mapMaintenanceToFrontend) });
+        } catch (err) {
+          console.error('Failed to fetch payments:', err);
+        }
+      },
+
+      addOwner: async (owner) => {
+        const req = {
+          name: owner.name,
+          nameInMarathi: owner.nameMr || '',
+          flatNumber: owner.flat,
+          phoneNo: owner.phone.replace(/^91/, ''),
+        };
+        await OwnerService.createOwner(req);
+        await get().fetchOwners();
+      },
+
+      updateOwner: async (id, updated) => {
+        const current = get().owners.find((o) => o.id === id);
+        if (!current) return;
+        const merged = { ...current, ...updated };
+        const req = {
+          name: merged.name,
+          nameInMarathi: merged.nameMr || '',
+          flatNumber: merged.flat,
+          phoneNo: merged.phone.replace(/^91/, ''),
+        };
+        await OwnerService.updateOwner(Number(id), req);
+        await get().fetchOwners();
+      },
+
+      deleteOwner: async (id) => {
+        await OwnerService.deleteOwner(Number(id));
+        await get().fetchOwners();
+        await get().fetchPayments();
+      },
+
+      addPayment: async (payment, extra) => {
+        if (!extra) return;
+        const [tY, tM] = extra.toDate.split('-').map(Number);
+        const fromDateStr = `${extra.fromDate}-01`;
+        const lastDay = new Date(tY, tM, 0).getDate();
+        const toDateStr = `${extra.toDate}-${String(lastDay).padStart(2, '0')}`;
+
+        // 1. Create Maintenance
+        const maintenance = await MaintenanceService.createMaintenance({
+          ownerId: Number(payment.ownerId),
+          fromDate: fromDateStr,
+          toDate: toDateStr,
+          amount: Number(payment.amount),
+        });
+
+        // 2. Mark as paid
+        await MaintenanceService.markAsPaid(
+          maintenance.id,
+          payment.transactionId
+        );
+
+        // 3. Reload payments list from backend
+        await get().fetchPayments();
+      },
+
+      updatePayment: async (id, updated) => {
+        console.warn('Update payment not directly supported by backend, simulating via delete and re-create.');
+        const current = get().payments.find((p) => p.id === id);
+        if (!current) return;
+        const merged = { ...current, ...updated };
+        
+        // Delete old
+        await MaintenanceService.deleteMaintenance(Number(id));
+        
+        // Parse month range from merged.month or assume standard single month
+        let fromDateStr = new Date().toISOString().split('T')[0];
+        let toDateStr = fromDateStr;
+        if (merged.month) {
+          const parts = merged.month.split(' - ');
+          const parsePart = (part: string) => {
+            const date = new Date(part);
+            return isNaN(date.getTime()) ? new Date() : date;
+          };
+          const start = parsePart(parts[0]);
+          const end = parts.length === 2 ? parsePart(parts[1]) : start;
+          fromDateStr = start.toISOString().split('T')[0];
+          const lastDay = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
+          toDateStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        }
+
+        const maintenance = await MaintenanceService.createMaintenance({
+          ownerId: Number(merged.ownerId),
+          fromDate: fromDateStr,
+          toDate: toDateStr,
+          amount: Number(merged.amount),
+        });
+
+        await MaintenanceService.markAsPaid(maintenance.id, merged.transactionId);
+        await get().fetchPayments();
+      },
+
+      deletePayment: async (id) => {
+        await MaintenanceService.deleteMaintenance(Number(id));
+        await get().fetchPayments();
+      },
+
       nextReceiptNumber: () => {
-        // Pure read — counter incremented separately via addPayment wrapper
         const counter = get().receiptCounter;
         const year = new Date().getFullYear();
         return `RCP-${year}-${String(counter).padStart(3, '0')}`;
       },
-      addExpense: (expense) => set((state) => ({ expenses: [...state.expenses, expense] })),
-      updateExpense: (id, updated) =>
-        set((state) => ({
-          expenses: state.expenses.map((e) => (e.id === id ? { ...e, ...updated } : e)),
-        })),
-      deleteExpense: (id) =>
-        set((state) => ({
-          expenses: state.expenses.filter((e) => e.id !== id),
-        })),
+
+      addExpense: async (expense) => {
+        const req = {
+          title: expense.title,
+          category: expense.category,
+          amount: expense.amount,
+          date: expense.date,
+          paidTo: expense.paidTo,
+          note: expense.note,
+        };
+        await ExpenseService.createExpense(req);
+        await get().fetchExpenses();
+      },
+
+      updateExpense: async (id, updated) => {
+        const current = get().expenses.find((e) => e.id === id);
+        if (!current) return;
+        const merged = { ...current, ...updated };
+        const req = {
+          title: merged.title,
+          category: merged.category,
+          amount: merged.amount,
+          date: merged.date,
+          paidTo: merged.paidTo,
+          note: merged.note,
+        };
+        await ExpenseService.updateExpense(Number(id), req);
+        await get().fetchExpenses();
+      },
+
+      deleteExpense: async (id) => {
+        await ExpenseService.deleteExpense(Number(id));
+        await get().fetchExpenses();
+      },
     }),
     {
       name: 'society-storage',
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        theme: state.theme,
+        language: state.language,
+        societyName: state.societyName,
+        sidebarCollapsed: state.sidebarCollapsed,
+      }),
     }
   )
 );
