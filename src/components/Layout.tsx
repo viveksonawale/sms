@@ -23,8 +23,12 @@ export default function Layout() {
       >
         <Topbar onMenuClick={() => setIsMobileMenuOpen(true)} />
         <main
-          className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8"
-          style={{ backgroundColor: isDark ? '#141a21' : '#f9fafb' }}
+          className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 mobile-scroll"
+          style={{
+            backgroundColor: isDark ? '#141a21' : '#f9fafb',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'contain',
+          }}
         >
           <Outlet />
         </main>

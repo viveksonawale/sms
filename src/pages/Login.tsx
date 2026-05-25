@@ -25,7 +25,7 @@ export default function Login() {
     setIsLoading(true);
     try {
       const response = await AuthService.login({ username, password });
-      localStorage.setItem('token', response.token);
+      sessionStorage.setItem('token', response.token);
       setAuth(true);
       toast('Welcome back, Ramesh Sonawale!', 'success');
       navigate('/');

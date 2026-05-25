@@ -33,6 +33,7 @@ const resources = {
       confirmPayment: 'Confirm Payment',
       downloadReceipt: 'Download Receipt',
       sendViaWhatsapp: 'Send via WhatsApp',
+      viewDetails: 'View Details',
 
       // Stats
       totalOwners: 'Total Owners',
@@ -61,7 +62,7 @@ const resources = {
       // Placeholders / hints
       searchPlaceholder: 'Search by name or flat…',
       signInPortal: 'Sign in to your admin portal',
-      invalidCredentials: 'Invalid credentials. Try admin / society@123',
+      invalidCredentials: 'Invalid credentials',
       signingIn: 'Signing in...',
 
       // Empty states
@@ -70,7 +71,7 @@ const resources = {
       noResultsFound: 'No results found',
       tryDifferentSearch: 'Try a different name or flat number',
       addFirstOwner: 'Add your first owner to get started',
-      
+
       // Titles/Text
       collectionProgress: 'Collection Progress',
       ownerInfo: 'Owner Info',
@@ -110,6 +111,18 @@ const resources = {
       totalThisYear: 'Total This Year',
       breakdown: 'Breakdown by Category',
       noExpenses: 'No expenses recorded yet',
+
+      // Warnings
+      warnings: 'Warnings',
+      issueWarning: 'Issue Warning',
+      selectOwner: 'Select Owner',
+      copyText: 'Copy Text',
+      noPendingDues: 'No pending dues for this owner.',
+      sendWarning: 'Send Warning',
+      monthsRemaining: 'Total Months Pending',
+      totalAmount: 'Total Amount',
+      preview: 'Message Preview',
+      textCopied: 'Message copied to clipboard!',
     },
   },
   mr: {
@@ -143,6 +156,7 @@ const resources = {
       confirmPayment: 'पेमेंटची पुष्टी करा',
       downloadReceipt: 'देयक डाउनलोड करा',
       sendViaWhatsapp: 'WhatsApp द्वारे पाठवा',
+      viewDetails: 'तपशील पहा',
 
       // Stats
       totalOwners: 'एकूण मालक',
@@ -180,7 +194,7 @@ const resources = {
       noResultsFound: 'कोणतेही निकाल आढळले नाहीत',
       tryDifferentSearch: 'वेगळे नाव किंवा फ्लॅट क्रमांक वापरून पहा',
       addFirstOwner: 'सुरुवात करण्यासाठी आपला पहिला मालक जोडा',
-      
+
       // Titles/Text
       collectionProgress: 'संग्रह प्रगती',
       ownerInfo: 'मालकाची माहिती',
@@ -220,6 +234,18 @@ const resources = {
       totalThisYear: 'या वर्षाचा खर्च',
       breakdown: 'श्रेणीनुसार खर्च',
       noExpenses: 'अद्याप कोणताही खर्च नाही',
+
+      // Warnings
+      warnings: 'इशारे',
+      issueWarning: 'इशारा द्या',
+      selectOwner: 'मालक निवडा',
+      copyText: 'मजकूर कॉपी करा',
+      noPendingDues: 'या मालकाची कोणतीही थकबाकी नाही.',
+      sendWarning: 'इशारा पाठवा',
+      monthsRemaining: 'एकूण प्रलंबित महिने',
+      totalAmount: 'एकूण रक्कम',
+      preview: 'संदेश पूर्वावलोकन',
+      textCopied: 'संदेश क्लिपबोर्डवर कॉपी केला!',
     },
   },
 };

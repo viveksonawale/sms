@@ -15,6 +15,6 @@ export const AuthService = {
    * Logout function (frontend only) - clear token
    */
   logout: () => {
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
   },
 };

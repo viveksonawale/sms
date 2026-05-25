@@ -14,6 +14,7 @@ const AddOwner = lazy(() => import('./pages/AddOwner'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Expenses = lazy(() => import('./pages/Expenses'));
 const AddExpense = lazy(() => import('./pages/AddExpense'));
+const Warnings = lazy(() => import('./pages/Warnings'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useStore((state) => state.isAuthenticated);
@@ -52,7 +53,7 @@ function App() {
   const fetchExpenses = useStore((state) => state.fetchExpenses);
   const fetchPayments = useStore((state) => state.fetchPayments);
 
-  // Wait for Zustand to rehydrate from localStorage before rendering routes.
+  // Wait for Zustand to rehydrate from sessionStorage before rendering routes.
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -115,6 +116,7 @@ function App() {
             <Route path="expenses" element={<Expenses />} />
             <Route path="expenses/add" element={<AddExpense />} />
             <Route path="expenses/edit/:id" element={<AddExpense />} />
+            <Route path="warnings" element={<Warnings />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

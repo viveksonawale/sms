@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { OwnerService } from '../api/owner.service';
 import { ExpenseService } from '../api/expense.service';
 import { MaintenanceService } from '../api/maintenance.service';
@@ -170,11 +170,16 @@ export const useStore = create<StoreState>()(
       },
 
       addOwner: async (owner) => {
+        // Strip all non-digit characters, then remove leading country code 91 if present
+        const rawDigits = owner.phone.replace(/\D/g, '');
+        const phoneNo = rawDigits.startsWith('91') && rawDigits.length > 10
+          ? rawDigits.slice(2)
+          : rawDigits;
         const req = {
           name: owner.name,
           nameInMarathi: owner.nameMr || '',
           flatNumber: owner.flat,
-          phoneNo: owner.phone.replace(/^91/, ''),
+          phoneNo,
         };
         await OwnerService.createOwner(req);
         await get().fetchOwners();
@@ -184,11 +189,16 @@ export const useStore = create<StoreState>()(
         const current = get().owners.find((o) => o.id === id);
         if (!current) return;
         const merged = { ...current, ...updated };
+        // Strip all non-digit characters, then remove leading country code 91 if present
+        const rawDigits = merged.phone.replace(/\D/g, '');
+        const phoneNo = rawDigits.startsWith('91') && rawDigits.length > 10
+          ? rawDigits.slice(2)
+          : rawDigits;
         const req = {
           name: merged.name,
           nameInMarathi: merged.nameMr || '',
           flatNumber: merged.flat,
-          phoneNo: merged.phone.replace(/^91/, ''),
+          phoneNo,
         };
         await OwnerService.updateOwner(Number(id), req);
         await get().fetchOwners();
@@ -308,6 +318,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'society-storage',
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         theme: state.theme,

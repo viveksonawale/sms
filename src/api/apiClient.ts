@@ -14,7 +14,7 @@ export const apiClient = axios.create({
 // Request interceptor to attach JWT token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       console.error('Unauthorized. Clearing token and redirecting to login...');
-      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
       useStore.setState({ isAuthenticated: false });
     }
     return Promise.reject(error);

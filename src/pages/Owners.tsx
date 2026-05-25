@@ -165,9 +165,21 @@ export default function Owners() {
                       </h3>
                       <ChevronRight size={15} style={{ color: '#c4cdd5', flexShrink: 0, marginTop: '2px' }} />
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="badge badge-paid" style={{ fontSize: '10px' }}>
-                        {owner.flat}
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span 
+                        style={{
+                          fontSize: '12px', 
+                          fontWeight: 800, 
+                          padding: '4px 10px', 
+                          borderRadius: '6px',
+                          backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.08)',
+                          color: '#f97316',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          border: '1px solid rgba(249, 115, 22, 0.2)',
+                        }}
+                      >
+                        {t('flat')}: {owner.flat}
                       </span>
                     </div>
                   </div>
@@ -189,7 +201,10 @@ export default function Owners() {
                       ● Unpaid
                     </span>
                   )}
-                  <span className="text-xs font-semibold" style={{ color: '#f97316' }}>View Details →</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#f97316' }}>
+                    <span className="text-xs font-bold">{t('viewDetails')}</span>
+                    <ChevronRight size={13} style={{ strokeWidth: 3 }} />
+                  </div>
                 </div>
               </div>
             );

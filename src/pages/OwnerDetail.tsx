@@ -5,7 +5,7 @@ import { format, startOfMonth, isSameMonth, eachMonthOfInterval } from 'date-fns
 import {
   ArrowLeft, Trash2, Download, FileText,
   Pencil, X, Check, ChevronLeft, ChevronRight,
-  Phone, Calendar, IndianRupee, Home,
+  Phone, Calendar, IndianRupee, Building2,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
@@ -459,51 +459,74 @@ export default function OwnerDetail() {
       return;
     }
 
-    const dateStr = payment.paidOn ? format(new Date(payment.paidOn), 'dd MMM yyyy') : '';
-    const fallbackText = encodeURIComponent(
-      `Hello ${owner.name},\n\nPlease find attached your society maintenance receipt.\n\nReceipt No: ${payment.receiptNumber}\nPeriod: ${payment.month}\nAmount: ₹${payment.amount.toLocaleString('en-IN')}\nPaid On: ${dateStr}\n\nThank you!\n— ${societyName}`
-    );
+    // Build a clean E.164 phone number always prefixed with 91
+    const rawDigits = owner.phone.replace(/\D/g, '');
+    const e164Phone = rawDigits.startsWith('91') && rawDigits.length > 10
+      ? rawDigits
+      : `91${rawDigits}`;
+
+    const msgText = `Dear ${owner.name} (Flat ${owner.flat}),\n\nYour society maintenance has been received successfully.\n\nPeriod: ${payment.month}\nAmount Paid: ₹${payment.amount.toLocaleString('en-IN')}\n\nThank you!\n${societyName}`;
+    const encodedText = encodeURIComponent(msgText);
+    
+    // Detect mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    const triggerWhatsAppRedirect = () => {
+      if (isMobile) {
+        // Direct native app scheme
+        window.location.href = `whatsapp://send?phone=${e164Phone}&text=${encodedText}`;
+        
+        // Fallback: If custom scheme isn't handled within 300ms, redirect to the universal api link
+        setTimeout(() => {
+          window.open(`https://api.whatsapp.com/send?phone=${e164Phone}&text=${encodedText}`, '_blank');
+        }, 300);
+      } else {
+        // Desktop: Open standard WhatsApp API link in new tab
+        window.open(`https://api.whatsapp.com/send?phone=${e164Phone}&text=${encodedText}`, '_blank');
+      }
+    };
 
     try {
       toast('Fetching receipt PDF...', 'info');
       const receipt = await ReceiptService.getReceiptByMaintenance(Number(payment.id));
       const { blob, filename } = await ReceiptService.getReceiptBlob(receipt.id);
+
+      // Always download the PDF so the admin can attach it
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // Try Web Share API with file (works on Android/iOS when supported)
       const file = new File([blob], filename, { type: 'application/pdf' });
-
-      // Try Web Share API with file (works on mobile — Android/iOS)
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: `Receipt — ${payment.receiptNumber}`,
-          text: `${societyName} — Maintenance Receipt\nReceipt No: ${payment.receiptNumber}\nPeriod: ${payment.month}\nAmount: ₹${payment.amount.toLocaleString('en-IN')}`,
-          files: [file],
-        });
-        toast('Receipt shared successfully!', 'success');
-      } else {
-        // Desktop fallback: download the PDF first, then open WhatsApp with text
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        link.parentNode?.removeChild(link);
-        window.URL.revokeObjectURL(url);
-
-        // Then open WhatsApp with instructions to attach the downloaded file
-        const desktopText = encodeURIComponent(
-          `Hello ${owner.name},\n\nPlease find your maintenance receipt (PDF just downloaded — please attach it).\n\nReceipt No: ${payment.receiptNumber}\nPeriod: ${payment.month}\nAmount: ₹${payment.amount.toLocaleString('en-IN')}\nPaid On: ${dateStr}\n\nThank you!\n— ${societyName}`
-        );
-        const phone = owner.phone.replace(/\D/g, '');
-        window.open(`https://wa.me/${phone}?text=${desktopText}`, '_blank');
-        toast('PDF downloaded! Attach it in the WhatsApp window that opened.', 'success');
+        try {
+          await navigator.share({
+            title: `Receipt — ${payment.receiptNumber}`,
+            text: msgText,
+            files: [file],
+          });
+          toast('Receipt shared successfully!', 'success');
+          return;
+        } catch (shareErr: any) {
+          if (shareErr?.name === 'AbortError') return; // User dismissed — not an error
+          // Fall through to wa.me redirect
+        }
       }
+
+      // Redirect to WhatsApp (opens the app on mobile, web on desktop)
+      triggerWhatsAppRedirect();
+      toast('PDF downloaded! Open WhatsApp and attach the PDF to send it.', 'success');
     } catch (err: any) {
-      if (err?.name === 'AbortError') return; // User cancelled share sheet — not an error
+      if (err?.name === 'AbortError') return;
       console.error('WhatsApp share error:', err);
-      // Final fallback: just open WhatsApp with text
-      const phone = owner.phone.replace(/\D/g, '');
-      window.open(`https://wa.me/${phone}?text=${fallbackText}`, '_blank');
-      toast('Could not fetch PDF. Sending text message instead.', 'error');
+      // Final fallback: open WhatsApp with pre-filled text even without the PDF
+      triggerWhatsAppRedirect();
+      toast('Could not download PDF. Opening WhatsApp with text only.', 'error');
     }
   };
 
@@ -555,9 +578,23 @@ export default function OwnerDetail() {
             <h1 style={{ fontSize: '20px', fontWeight: 800, color: textPrimary }}>
               {language === 'mr' && owner.nameMr ? owner.nameMr : owner.name}
             </h1>
-            <p style={{ fontSize: '13px', color: textSecondary }}>
-              {t('flat')}: <span style={{ color: '#f97316', fontWeight: 700 }}>{owner.flat}</span>
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+              <span 
+                style={{
+                  fontSize: '11px', 
+                  fontWeight: 800, 
+                  padding: '3px 8px', 
+                  borderRadius: '6px',
+                  backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.08)',
+                  color: '#f97316',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  border: '1px solid rgba(249, 115, 22, 0.2)',
+                }}
+              >
+                {t('flat')}: {owner.flat}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -585,30 +622,58 @@ export default function OwnerDetail() {
 
             {isEditing ? (
               <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {[
-                  { label: t('fullName'), key: 'name', type: 'text', required: true },
-                  { label: t('fullNameMr'), key: 'nameMr', type: 'text', required: false },
-                  { label: t('flat'), key: 'flat', type: 'text', required: true },
-                  { label: t('phone'), key: 'phone', type: 'text' },
-                  { label: t('email'), key: 'email', type: 'email' },
-                  { label: `${t('monthlyAmount')} (₹)`, key: 'monthlyAmount', type: 'number' },
-                  { label: t('joinedDate'), key: 'joinedDate', type: 'date' },
-                ].map(({ label, key, type, required }) => (
-                  <div key={key}>
-                    <label className="label">{label}</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type={type}
-                        value={String(editForm[key as keyof typeof editForm] || '')}
-                        onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
-                        className="input-field"
-                        style={type === 'date' ? { paddingLeft: '36px' } : undefined}
-                        required={required !== false}
-                      />
-                      {type === 'date' && <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab', pointerEvents: 'none', zIndex: 10 }} />}
-                    </div>
+                {/* Full Name */}
+                <div>
+                  <label className="label">{t('fullName')}</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="input-field"
+                    required
+                  />
+                </div>
+                {/* Flat */}
+                <div>
+                  <label className="label">{t('flat')}</label>
+                  <input
+                    type="text"
+                    value={editForm.flat}
+                    onChange={(e) => setEditForm({ ...editForm, flat: e.target.value })}
+                    className="input-field"
+                    required
+                  />
+                </div>
+                {/* Phone with +91 prefix */}
+                <div>
+                  <label className="label">{t('phone')}</label>
+                  <div style={{ display: 'flex' }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      padding: '0 14px', borderRadius: '8px 0 0 8px',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#dfe3e8'}`,
+                      borderRight: 'none',
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f4f6f8',
+                      color: textSecondary,
+                      fontSize: '14px', fontWeight: 600,
+                      userSelect: 'none', whiteSpace: 'nowrap',
+                    }}>
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      value={editForm.phone.replace(/\D/g, '').replace(/^91/, '').slice(0, 10)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setEditForm({ ...editForm, phone: val });
+                      }}
+                      className="input-field"
+                      style={{ flex: 1, borderRadius: '0 8px 8px 0' }}
+                      required
+                    />
                   </div>
-                ))}
+                </div>
                 <button type="submit" className="btn-primary w-full justify-center" style={{ marginTop: '4px' }}>
                   {t('save')} Changes
                 </button>
@@ -616,7 +681,7 @@ export default function OwnerDetail() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {[
-                  { icon: Home, label: t('flat'), value: owner.flat },
+                  { icon: Building2, label: t('flat'), value: owner.flat },
                   { icon: Phone, label: t('phone'), value: owner.phone.startsWith('91') && owner.phone.length === 12 ? `+91 ${owner.phone.slice(2)}` : `+91 ${owner.phone.replace(/^\+91\s*/, '')}` },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
@@ -629,7 +694,26 @@ export default function OwnerDetail() {
                     </div>
                     <div>
                       <p style={{ fontSize: '11px', color: textSecondary, marginBottom: '2px' }}>{label}</p>
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: textPrimary }}>{value}</p>
+                      {label === t('flat') ? (
+                        <span 
+                          style={{
+                            fontSize: '12px', 
+                            fontWeight: 800, 
+                            padding: '4px 10px', 
+                            borderRadius: '6px',
+                            backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.08)',
+                            color: '#f97316',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            border: '1px solid rgba(249, 115, 22, 0.2)',
+                            marginTop: '2px'
+                          }}
+                        >
+                          {value}
+                        </span>
+                      ) : (
+                        <p style={{ fontSize: '13px', fontWeight: 600, color: textPrimary }}>{value}</p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -765,7 +849,26 @@ export default function OwnerDetail() {
                   ].map(({ label, value }) => (
                     <div key={label}>
                       <p style={{ fontSize: '11px', color: textSecondary, marginBottom: '3px' }}>{label}</p>
-                      <p style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>{value}</p>
+                      {label === t('flat') ? (
+                        <span 
+                          style={{
+                            fontSize: '12px', 
+                            fontWeight: 800, 
+                            padding: '4px 10px', 
+                            borderRadius: '6px',
+                            backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.08)',
+                            color: '#f97316',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            border: '1px solid rgba(249, 115, 22, 0.2)',
+                            marginTop: '2px'
+                          }}
+                        >
+                          {value}
+                        </span>
+                      ) : (
+                        <p style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>{value}</p>
+                      )}
                     </div>
                   ))}
                 </div>

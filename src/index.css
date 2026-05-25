@@ -41,6 +41,16 @@ body.lang-mr .text-2xl { font-size: 1.6rem; line-height: 2rem; }
 html.dark ::-webkit-scrollbar-thumb { background: #454f5b; }
 html.dark ::-webkit-scrollbar-thumb:hover { background: #637381; }
 
+/* Mobile scroll improvements */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-scroll,
+main {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
 /* Hide number spinners */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }

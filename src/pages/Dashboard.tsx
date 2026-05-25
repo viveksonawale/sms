@@ -172,48 +172,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Collection Progress */}
-      {stats.totalOwners > 0 && (
-        <div
-          style={{
-            backgroundColor: cardBg,
-            borderRadius: '12px',
-            padding: '20px 24px',
-            boxShadow: isDark
-              ? '0 0 2px 0 rgba(0,0,0,0.3), 0 12px 24px -4px rgba(0,0,0,0.2)'
-              : '0 0 2px 0 rgba(145,158,171,0.2), 0 12px 24px -4px rgba(145,158,171,0.12)',
-          }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <p style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>
-              {t('collectionProgress')} — {currentMonthStr}
-            </p>
-            <span
-              style={{
-                fontSize: '12px', fontWeight: 700, padding: '3px 10px',
-                backgroundColor: 'rgba(249, 115, 22,0.12)',
-                color: '#f97316', borderRadius: '20px',
-              }}
-            >
-              {Math.round((stats.paidThisMonth / stats.totalOwners) * 100)}%
-            </span>
-          </div>
-          <div style={{ height: '8px', backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#f4f6f8', borderRadius: '99px', overflow: 'hidden' }}>
-            <div
-              style={{
-                height: '100%',
-                width: `${(stats.paidThisMonth / stats.totalOwners) * 100}%`,
-                background: 'linear-gradient(90deg, #ea580c, #f97316, #fdba74)',
-                borderRadius: '99px',
-                transition: 'width 0.7s ease',
-              }}
-            />
-          </div>
-          <p style={{ fontSize: '12px', color: textSecondary, marginTop: '8px' }}>
-            {stats.paidThisMonth} of {stats.totalOwners} owners paid this month
-          </p>
-        </div>
-      )}
 
       {/* Search */}
       <div style={{ position: 'relative' }}>
@@ -331,9 +289,21 @@ export default function Dashboard() {
                       </h3>
                       <ChevronRight size={15} style={{ color: '#c4cdd5', flexShrink: 0, marginTop: '2px' }} />
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="badge badge-paid" style={{ fontSize: '10px' }}>
-                        {owner.flat}
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span 
+                        style={{
+                          fontSize: '12px', 
+                          fontWeight: 800, 
+                          padding: '4px 10px', 
+                          borderRadius: '6px',
+                          backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.08)',
+                          color: '#f97316',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          border: '1px solid rgba(249, 115, 22, 0.2)',
+                        }}
+                      >
+                        {t('flat')}: {owner.flat}
                       </span>
                     </div>
                   </div>
@@ -355,7 +325,10 @@ export default function Dashboard() {
                       ● {t('pending')}
                     </span>
                   )}
-                  <span className="text-xs font-semibold" style={{ color: '#f97316' }}>View Details →</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#f97316' }}>
+                    <span className="text-xs font-bold">{t('viewDetails')}</span>
+                    <ChevronRight size={13} style={{ strokeWidth: 3 }} />
+                  </div>
                 </div>
               </div>
             );
