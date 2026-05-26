@@ -359,7 +359,7 @@ export default function Warnings() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* Left Column: Selection */}
         <div className="space-y-6 flex flex-col">
           <div className="card p-5 flex flex-col" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, maxHeight: '500px' }}>
@@ -539,7 +539,7 @@ export default function Warnings() {
         </div>
 
         {/* Right Column: Preview and Actions */}
-        <div className="card p-5 flex flex-col h-full" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
+        <div className="card p-5 flex flex-col" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
           <div className="flex items-center justify-between mb-4">
             <h3 style={{ fontSize: '15px', fontWeight: 700, color: textPrimary }}>{t('preview')}</h3>
             
@@ -571,18 +571,18 @@ export default function Warnings() {
           </div>
 
           <div
-            className="flex-1 rounded-xl mb-5 flex flex-col"
+            className="rounded-xl mb-5 flex flex-col"
             style={{
               backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f9fafb',
               border: `1px solid ${borderColor}`,
-              minHeight: '220px',
+              minHeight: '280px',
             }}
           >
             {customMessage || selectedOwner ? (
               <textarea
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
-                className="w-full h-full resize-none p-4 mobile-scroll"
+                className="w-full flex-1 resize-none p-4 mobile-scroll"
                 style={{ 
                   backgroundColor: 'transparent',
                   border: 'none',
@@ -594,7 +594,7 @@ export default function Warnings() {
                 placeholder="Warning message..."
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center p-4" style={{ color: textSecondary }}>
+              <div className="flex flex-col items-center justify-center flex-1 text-center p-4" style={{ color: textSecondary }}>
                 <MessageSquareWarning size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
                 <p style={{ fontSize: '13px' }}>Select an owner with pending dues to generate warning message</p>
               </div>

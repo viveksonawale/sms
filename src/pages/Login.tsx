@@ -42,7 +42,7 @@ export default function Login() {
 
   return (
     <div
-      className="min-h-screen flex"
+      className="min-h-[100svh] flex"
       style={{ backgroundColor: '#f9fafb' }}
     >
       {/* Left panel — branding */}
@@ -71,7 +71,7 @@ export default function Login() {
             Manage your society's maintenance, payments, and residents from one place.
           </p>
 
-          <div className="flex items-center justify-center gap-6 mt-10">
+          <div className="flex flex-wrap items-center justify-center gap-6 mt-10">
             {[
               { val: '100%', label: 'Secure' },
               { val: '24/7', label: 'Access' },

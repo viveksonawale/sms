@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { useStore } from '../store/useStore';
+import { Helmet } from 'react-helmet-async';
 
 export default function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -10,10 +11,18 @@ export default function Layout() {
   const isDark = theme === 'dark';
 
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ backgroundColor: isDark ? '#141a21' : '#f9fafb' }}
-    >
+    <>
+      <Helmet>
+        <title>Shri Sai Apartment - Society Management</title>
+        <meta name="description" content="Manage your society's maintenance, payments, and residents from one place." />
+        <meta property="og:title" content="Shri Sai Apartment - Society Management" />
+        <meta property="og:description" content="Manage your society's maintenance, payments, and residents from one place." />
+        <meta property="og:type" content="website" />
+      </Helmet>
+      <div
+        className="flex h-[100svh] overflow-hidden"
+        style={{ backgroundColor: isDark ? '#141a21' : '#f9fafb' }}
+      >
       <Sidebar isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} />
 
       {/* Main Content Area */}
@@ -33,6 +42,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

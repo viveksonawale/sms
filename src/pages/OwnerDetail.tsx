@@ -633,6 +633,16 @@ export default function OwnerDetail() {
                     required
                   />
                 </div>
+                {/* Name in Marathi */}
+                <div>
+                  <label className="label">Name in Marathi</label>
+                  <input
+                    type="text"
+                    value={editForm.nameMr}
+                    onChange={(e) => setEditForm({ ...editForm, nameMr: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
                 {/* Flat */}
                 <div>
                   <label className="label">{t('flat')}</label>

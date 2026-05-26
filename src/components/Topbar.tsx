@@ -73,7 +73,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         </button>
 
         {/* Mobile Brand (Visible only on mobile) */}
-        <div className="flex items-center gap-1.5 md:hidden overflow-hidden" style={{ maxWidth: '160px' }}>
+        <div className="flex items-center gap-1.5 md:hidden">
           <div
             className="flex-shrink-0 flex items-center justify-center"
             style={{
@@ -84,7 +84,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             <img src="/images/shri.png?v=orange" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <span 
-            className="font-bold truncate" 
+            className="font-bold whitespace-nowrap" 
             style={{ 
               color: theme === 'dark' ? '#ffffff' : '#1c252e',
               fontSize: '14px', // Stable font size to prevent jumping between languages

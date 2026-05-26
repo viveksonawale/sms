@@ -4,6 +4,8 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
+import { HelmetProvider } from 'react-helmet-async';
 
 // Lazy load pages
 const Login = lazy(() => import('./pages/Login'));
@@ -15,6 +17,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Expenses = lazy(() => import('./pages/Expenses'));
 const AddExpense = lazy(() => import('./pages/AddExpense'));
 const Warnings = lazy(() => import('./pages/Warnings'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useStore((state) => state.isAuthenticated);
@@ -99,9 +102,11 @@ function App() {
   }
 
   return (
-    <Router>
-      <Suspense fallback={<LoadingScreen />}>
-        <Routes>
+    <HelmetProvider>
+      <ErrorBoundary>
+        <Router>
+          <Suspense fallback={<LoadingScreen />}>
+            <Routes>
           <Route path="/login" element={<Login />} />
 
           <Route path="/" element={
@@ -121,10 +126,12 @@ function App() {
           </Route>
 
           {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </Router>
+      </ErrorBoundary>
+    </HelmetProvider>
   );
 }
 

@@ -15,6 +15,7 @@ export default function AddOwner() {
 
   const [formData, setFormData] = useState({
     name: '',
+    nameMr: '',
     flat: '',
     phone: '',
   });
@@ -39,6 +40,7 @@ export default function AddOwner() {
     const newOwner = {
       id: crypto.randomUUID(),
       name: formData.name.trim(),
+      nameMr: formData.nameMr.trim(),
       flat: formData.flat.trim().toUpperCase(),
       phone: formData.phone,
       email: '',
@@ -70,6 +72,7 @@ export default function AddOwner() {
 
   const fields = [
     { id: 'name', label: t('fullName'), type: 'text', key: 'name', placeholder: '', span2: true, required: true },
+    { id: 'nameMr', label: 'Name in Marathi', type: 'text', key: 'nameMr', placeholder: '', span2: true, required: false },
     { id: 'flat', label: t('flat'), type: 'text', key: 'flat', placeholder: '', span2: true, required: true },
   ];
 

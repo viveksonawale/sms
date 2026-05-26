@@ -332,8 +332,10 @@ html.dark .table-td {
   border-color: #2f3c48;
 }
 tr:last-child > .table-td { border-bottom: none; }
-tr:hover > .table-td { background-color: #f9fafb; }
-html.dark tr:hover > .table-td { background-color: #1f2c36; }
+@media (hover: hover) {
+  tr:hover > .table-td { background-color: #f9fafb; }
+  html.dark tr:hover > .table-td { background-color: #1f2c36; }
+}
 
 /* =========================================
    RECEIPT CARD
