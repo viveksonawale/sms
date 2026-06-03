@@ -46,7 +46,7 @@ export default function Expenses() {
       label: format(d, 'MMMM yyyy')
     };
   });
-  const [selectedMonth, setSelectedMonth] = useState<string>(monthOptions[0].value);
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
   // Delete State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -66,7 +66,7 @@ export default function Expenses() {
       const matchSearch = e.title.toLowerCase().includes(search.toLowerCase()) || 
                           e.paidTo.toLowerCase().includes(search.toLowerCase());
       const matchCategory = selectedCategory === 'All' || e.category === selectedCategory;
-      const matchMonth = e.date.startsWith(selectedMonth);
+      const matchMonth = selectedMonth === 'all' || e.date.startsWith(selectedMonth);
       return matchSearch && matchCategory && matchMonth;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [expenses, search, selectedCategory, selectedMonth]);
@@ -124,9 +124,6 @@ export default function Expenses() {
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: textPrimary }}>
             {t('otherExpenses')}
           </h1>
-          <p style={{ fontSize: '14px', color: textSecondary, marginTop: '4px', lineHeight: 1.4 }}>
-            Track all society expenses outside of maintenance collection
-          </p>
         </div>
         <button 
           className="btn-primary flex-shrink-0" 
@@ -176,6 +173,7 @@ export default function Expenses() {
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
+              <option value="all">All Months</option>
               {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <select
@@ -220,7 +218,7 @@ export default function Expenses() {
                     paginatedExpenses.map((exp) => (
                       <tr key={exp.id} className="transition-colors" style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}`, cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? '#28343f' : '#f9fafb'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                         <td style={{ padding: '16px', fontSize: '13px', color: textPrimary, whiteSpace: 'nowrap' }}>
-                          {format(parseISO(exp.date), 'dd MMM yyyy')}
+                          {format(parseISO(exp.date), 'dd/MM/yyyy')}
                         </td>
                         <td style={{ padding: '16px', fontSize: '14px', fontWeight: 600, color: textPrimary }}>
                           <span title={exp.note}>{exp.title}</span>

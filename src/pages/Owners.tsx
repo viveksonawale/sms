@@ -61,9 +61,6 @@ export default function Owners() {
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: textPrimary, marginBottom: '3px' }}>
             {t('owners')}
           </h1>
-          <p style={{ fontSize: '13px', color: textSecondary, lineHeight: 1.4 }}>
-            Manage and view all registered society members
-          </p>
         </div>
         <button
           onClick={() => navigate('/owners/add')}

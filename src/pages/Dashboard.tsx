@@ -100,9 +100,6 @@ export default function Dashboard() {
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: textPrimary, marginBottom: '3px' }}>
             {t('dashboard')}
           </h1>
-          <p style={{ fontSize: '13px', color: textSecondary }}>
-            {currentMonthStr} — Society Overview
-          </p>
         </div>
         <div className="flex flex-row gap-3">
           <button

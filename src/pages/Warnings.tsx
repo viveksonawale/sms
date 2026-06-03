@@ -353,9 +353,6 @@ export default function Warnings() {
           <h1 style={{ fontSize: '22px', fontWeight: 800, color: textPrimary, marginBottom: '3px' }}>
             {t('warnings')}
           </h1>
-          <p style={{ fontSize: '13px', color: textSecondary, lineHeight: 1.4 }}>
-            Issue complaints or warnings for pending maintenance dues
-          </p>
         </div>
       </div>
 

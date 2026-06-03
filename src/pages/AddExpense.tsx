@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import type { Expense } from '../store/useStore';
 import { ChevronLeft, Save, Receipt, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+
 import { useToast } from '../context/ToastContext';
 
 const CATEGORIES = [
@@ -39,6 +40,7 @@ export default function AddExpense() {
   const [paidTo, setPaidTo] = useState('');
   const [note, setNote] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -180,18 +182,26 @@ export default function AddExpense() {
                 </div>
               </div>
 
-               <div>
+              <div>
                 <label className="label">Date *</label>
-                <div style={{ position: 'relative' }}>
-                  <input 
-                    type="date" 
-                    className="input-field" 
-                    style={{ paddingLeft: '36px' }}
-                    value={date} 
-                    onChange={e => setDate(e.target.value)} 
-                    required 
+                <div
+                  className="input-field"
+                  onClick={() => dateInputRef.current?.showPicker()}
+                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '36px', position: 'relative', userSelect: 'none' }}
+                >
+                  <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab', pointerEvents: 'none' }} />
+                  <span style={{ flex: 1 }}>
+                    {date ? format(parseISO(date), 'dd/MM/yyyy') : 'DD/MM/YYYY'}
+                  </span>
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={date}
+                    onChange={e => setDate(e.target.value)}
+                    required
+                    style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer' }}
+                    tabIndex={-1}
                   />
-                  <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab', pointerEvents: 'none', zIndex: 10 }} />
                 </div>
               </div>
 
