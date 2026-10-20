@@ -45,9 +45,15 @@ class ErrorBoundary extends Component<Props, State> {
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#1c252e', marginBottom: '12px' }}>
             Oops! Something went wrong.
           </h1>
-          <p style={{ fontSize: '15px', color: '#637381', maxWidth: '400px', marginBottom: '32px' }}>
-            We've encountered an unexpected error. Please try refreshing the page. If the problem persists, contact support.
+          <p style={{ fontSize: '15px', color: '#637381', maxWidth: '400px', marginBottom: '16px' }}>
+            We've encountered an unexpected error.
           </p>
+          {this.state.error && (
+            <div style={{ textAlign: 'left', padding: '16px', background: '#fee2e2', color: '#991b1b', borderRadius: '8px', fontSize: '12px', maxWidth: '800px', overflow: 'auto', marginBottom: '24px', fontFamily: 'monospace' }}>
+              <strong>Error: {this.state.error.message}</strong>
+              <pre style={{ marginTop: '8px', fontSize: '11px', whiteSpace: 'pre-wrap' }}>{this.state.error.stack}</pre>
+            </div>
+          )}
           <button
             onClick={() => window.location.reload()}
             style={{

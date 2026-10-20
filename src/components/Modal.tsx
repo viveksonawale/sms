@@ -14,6 +14,7 @@ interface ModalProps {
   danger?: boolean;
   icon?: React.ElementType;
   children?: ReactNode;
+  maxWidth?: string;
 }
 
 export default function Modal({
@@ -27,6 +28,7 @@ export default function Modal({
   danger = false,
   icon: IconComponent = AlertTriangle,
   children,
+  maxWidth,
 }: ModalProps) {
   const theme = useStore((state) => state.theme);
   const isDark = theme === 'dark';
@@ -51,7 +53,7 @@ export default function Modal({
       <div
         style={{
           position: 'relative', zIndex: 10,
-          width: '100%', maxWidth: '420px',
+          width: '100%', maxWidth: maxWidth || '440px',
           backgroundColor: bgColor,
           borderRadius: '16px',
           boxShadow: isDark 

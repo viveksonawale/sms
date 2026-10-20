@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, Settings as SettingsIcon, LogOut, X, Users, TrendingUp, Receipt, MessageSquareWarning } from 'lucide-react';
+import { LayoutDashboard, Settings as SettingsIcon, LogOut, X, Users, TrendingUp, Receipt, MessageSquareWarning, BarChart3 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { AuthService } from '../api/auth.service';
 
@@ -27,6 +27,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { to: '/', icon: LayoutDashboard, label: t('dashboard') },
     { to: '/owners', icon: Users, label: t('owners') },
     { to: '/expenses', icon: Receipt, label: t('otherExpenses') },
+    { to: '/reports', icon: BarChart3, label: t('reports') },
     { to: '/warnings', icon: MessageSquareWarning, label: t('warnings') },
     { to: '/settings', icon: SettingsIcon, label: t('settings') },
   ];

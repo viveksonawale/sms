@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { format, startOfMonth, isSameMonth, eachMonthOfInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isSameMonth, eachMonthOfInterval } from 'date-fns';
 import {
   ArrowLeft, Trash2, Download, FileText,
   Pencil, X, Check, ChevronLeft, ChevronRight,
   Phone, Calendar, IndianRupee, Building2,
+  List, LayoutGrid, CheckCircle2, AlertCircle,
 } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useStore, isShopUnit, getStandardMonthlyRate } from '../store/useStore';
 
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
@@ -236,6 +237,11 @@ export default function OwnerDetail() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const isShop = isShopUnit(owner?.flat);
+  const standardMonthlyRate = (owner?.monthlyAmount && owner.monthlyAmount !== 2500)
+    ? owner.monthlyAmount
+    : getStandardMonthlyRate(owner?.flat);
+
   const [paymentFromDate, setPaymentFromDate] = useState(format(new Date(), 'yyyy-MM'));
   const [paymentToDate, setPaymentToDate] = useState(format(new Date(), 'yyyy-MM'));
   const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
@@ -251,6 +257,13 @@ export default function OwnerDetail() {
       return 0;
     }
   }, [paymentFromDate, paymentToDate]);
+
+  // Automatically update payment amount when months or owner standard rate changes
+  useEffect(() => {
+    if (totalMonthsPaid > 0) {
+      setPaymentAmount(totalMonthsPaid * standardMonthlyRate);
+    }
+  }, [totalMonthsPaid, standardMonthlyRate]);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeletePaymentModal, setShowDeletePaymentModal] = useState(false);
@@ -306,6 +319,103 @@ export default function OwnerDetail() {
     joinedDate: owner?.joinedDate ?? '',
   });
 
+  const [historyYear, setHistoryYear] = useState<string>('all');
+  const [historyMonth, setHistoryMonth] = useState<string>('all');
+  const [historyViewMode, setHistoryViewMode] = useState<'list' | 'matrix'>('list');
+
+  // Available Years dynamically gathered from this owner's payment history + current/recent years
+  const availableHistoryYears = useMemo(() => {
+    const yearsSet = new Set<string>();
+    const curY = new Date().getFullYear();
+    yearsSet.add(String(curY));
+    yearsSet.add(String(curY - 1));
+
+    ownerPayments.forEach((p) => {
+      if (p.paidOn) {
+        const y = new Date(p.paidOn).getFullYear();
+        if (!isNaN(y)) yearsSet.add(String(y));
+      }
+      if (p.fromDate) {
+        const y = p.fromDate.split('-')[0];
+        if (y) yearsSet.add(y);
+      }
+      if (p.month) {
+        const matches = p.month.match(/\d{4}/g);
+        if (matches) matches.forEach((m) => yearsSet.add(m));
+      }
+    });
+
+    return Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
+  }, [ownerPayments]);
+
+  // Check if a payment matches selected year and month
+  const matchesYearAndMonth = (p: typeof ownerPayments[0], yFilter: string, mFilter: string) => {
+    if (yFilter === 'all' && mFilter === 'all') return true;
+
+    let start: Date | null = null;
+    let end: Date | null = null;
+
+    if (p.fromDate) {
+      try {
+        const pStart = startOfMonth(new Date(p.fromDate + 'T00:00:00'));
+        const pEnd = p.toDate ? endOfMonth(new Date(p.toDate + 'T23:59:59')) : endOfMonth(pStart);
+        if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
+          start = pStart;
+          end = pEnd;
+        }
+      } catch {
+        // ignore date error
+      }
+    } else if (p.month && typeof p.month === 'string') {
+      try {
+        const parts = p.month.split(' - ');
+        const pStart = startOfMonth(new Date(parts[0]));
+        const pEnd = parts.length === 2 ? endOfMonth(new Date(parts[1])) : endOfMonth(pStart);
+        if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
+          start = pStart;
+          end = pEnd;
+        }
+      } catch {
+        // ignore date error
+      }
+    }
+
+    if (!start && p.paidOn) {
+      try {
+        const d = new Date(p.paidOn);
+        if (!isNaN(d.getTime())) {
+          start = startOfMonth(d);
+          end = endOfMonth(d);
+        }
+      } catch {
+        // ignore date error
+      }
+    }
+
+    if (!start || !end) return true;
+
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+
+    if (yFilter !== 'all') {
+      const targetYear = Number(yFilter);
+      if (startYear > targetYear || endYear < targetYear) {
+        return false;
+      }
+    }
+
+    if (mFilter !== 'all') {
+      const targetMonthIdx = Number(mFilter) - 1; // 0-based
+      const targetYear = yFilter !== 'all' ? Number(yFilter) : startYear;
+      const targetDate = new Date(targetYear, targetMonthIdx, 15);
+      if (targetDate < start || targetDate > end) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const sortedPayments = useMemo(
     () => [...ownerPayments].sort((a, b) => {
       const timeA = a.paidOn ? new Date(a.paidOn).getTime() : 0;
@@ -315,8 +425,94 @@ export default function OwnerDetail() {
     [ownerPayments]
   );
 
-  const totalPages = Math.max(1, Math.ceil(sortedPayments.length / PAGE_SIZE));
-  const paginatedPayments = sortedPayments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const filteredPayments = useMemo(() => {
+    return sortedPayments.filter((p) => matchesYearAndMonth(p, historyYear, historyMonth));
+  }, [sortedPayments, historyYear, historyMonth]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPayments.length / PAGE_SIZE));
+  const paginatedPayments = filteredPayments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // Target Year for 12-Month Matrix
+  const targetMatrixYear = historyYear === 'all' ? new Date().getFullYear() : Number(historyYear);
+
+  const monthsMatrix = useMemo(() => {
+    const list = [];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+
+    for (let idx = 0; idx < 12; idx++) {
+      const monthStart = new Date(targetMatrixYear, idx, 1);
+      const monthKey = format(monthStart, 'yyyy-MM');
+      const monthName = months[idx];
+
+      // Check if this month is paid for this owner
+      const matchingPayment = ownerPayments.find((p) => {
+        if (p.status !== 'paid') return false;
+        try {
+          if (p.fromDate) {
+            const pStart = startOfMonth(new Date(p.fromDate + 'T00:00:00'));
+            const pEnd = p.toDate ? endOfMonth(new Date(p.toDate + 'T23:59:59')) : endOfMonth(pStart);
+            if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
+              return monthStart >= pStart && monthStart <= pEnd;
+            }
+          }
+          if (p.month && typeof p.month === 'string') {
+            const parts = p.month.split(' - ');
+            const pStart = startOfMonth(new Date(parts[0]));
+            const pEnd = parts.length === 2 ? endOfMonth(new Date(parts[1])) : endOfMonth(pStart);
+            if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
+              return monthStart >= pStart && monthStart <= pEnd;
+            }
+          }
+        } catch {
+          // ignore
+        }
+        return false;
+      });
+
+      const isFuture = monthStart > new Date();
+
+      list.push({
+        monthIndex: idx,
+        monthName,
+        monthKey,
+        isPaid: !!matchingPayment,
+        payment: matchingPayment || null,
+        isFuture,
+        amount: matchingPayment ? matchingPayment.amount : standardMonthlyRate,
+      });
+    }
+
+    return list;
+  }, [targetMatrixYear, ownerPayments, standardMonthlyRate]);
+
+  // Statistics for this specific resident
+  const historyStats = useMemo(() => {
+    const totalCollected = filteredPayments
+      .filter((p) => p.status === 'paid')
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    const monthsPaidInYear = monthsMatrix.filter((m) => m.isPaid).length;
+    const monthsPendingInYear = monthsMatrix.filter((m) => !m.isPaid && !m.isFuture).length;
+    const totalDuesInYear = monthsPendingInYear * standardMonthlyRate;
+
+    return {
+      totalCollected,
+      monthsPaidInYear,
+      monthsPendingInYear,
+      totalDuesInYear,
+    };
+  }, [filteredPayments, monthsMatrix, standardMonthlyRate]);
+
+  // Handle pre-filling month from matrix to mark as paid
+  const handleSelectMonthToPay = (monthKey: string) => {
+    setPaymentFromDate(monthKey);
+    setPaymentToDate(monthKey);
+    setPaymentAmount(standardMonthlyRate);
+    toast(`Selected ${format(new Date(monthKey + '-01'), 'MMMM yyyy')} in payment form below.`, 'info');
+  };
 
   const cardShadow = isDark
     ? '0 0 2px 0 rgba(0,0,0,0.3), 0 12px 24px -4px rgba(0,0,0,0.2)'
@@ -342,9 +538,15 @@ export default function OwnerDetail() {
     );
   }
 
-  const initials = owner.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
+  const initials = (owner.name || 'Owner')
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'OW';
   const colors = ['#f97316', '#00b8d9', '#ffab00', '#ff5630', '#8e33ff'];
-  const avatarColor = colors[owner.name.charCodeAt(0) % colors.length];
+  const avatarColor = colors[(owner.name || 'O').charCodeAt(0) % colors.length];
 
   const handleMarkAsPaid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -909,172 +1111,619 @@ export default function OwnerDetail() {
             </div>
           )}
 
-          {/* Payment History */}
+          {/* Payment History Card with Yearly & Monthly Filter and Matrix View */}
           <div style={{ backgroundColor: cardBg, borderRadius: '12px', overflow: 'hidden', boxShadow: cardShadow }}>
-            <div style={{
-              padding: '16px 20px', borderBottom: `1px solid ${borderColor}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
-              <h2 style={{ fontSize: '14px', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={15} style={{ color: '#919eab' }} />
-                {t('history')}
-              </h2>
-              <span style={{
-                fontSize: '11px', fontWeight: 700, padding: '3px 10px',
-                backgroundColor: 'rgba(249, 115, 22,0.1)', color: '#f97316', borderRadius: '20px',
-              }}>
-                {sortedPayments.length} records
-              </span>
+            {/* Header Toolbar */}
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: `1px solid ${borderColor}`,
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2 style={{ fontSize: '15px', fontWeight: 700, color: textPrimary, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileText size={16} style={{ color: '#f97316' }} />
+                  {t('history')}
+                </h2>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                    color: '#f97316',
+                    borderRadius: '16px',
+                  }}
+                >
+                  {filteredPayments.length} of {ownerPayments.length} records
+                </span>
+              </div>
+
+              {/* Filters and View Mode Switcher */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Year Filter */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold" style={{ color: textSecondary }}>Year:</span>
+                  <select
+                    value={historyYear}
+                    onChange={(e) => {
+                      setHistoryYear(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="input-field text-xs font-bold cursor-pointer"
+                    style={{ padding: '4px 10px', height: '32px', minWidth: '95px', width: 'auto' }}
+                  >
+                    <option value="all">All Years</option>
+                    {availableHistoryYears.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Month Filter */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold" style={{ color: textSecondary }}>Month:</span>
+                  <select
+                    value={historyMonth}
+                    onChange={(e) => {
+                      setHistoryMonth(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="input-field text-xs font-semibold cursor-pointer"
+                    style={{ padding: '4px 10px', height: '32px', minWidth: '105px', width: 'auto' }}
+                  >
+                    <option value="all">{t('allMonths')}</option>
+                    {[
+                      { val: '1', name: 'Jan' }, { val: '2', name: 'Feb' }, { val: '3', name: 'Mar' },
+                      { val: '4', name: 'Apr' }, { val: '5', name: 'May' }, { val: '6', name: 'Jun' },
+                      { val: '7', name: 'Jul' }, { val: '8', name: 'Aug' }, { val: '9', name: 'Sep' },
+                      { val: '10', name: 'Oct' }, { val: '11', name: 'Nov' }, { val: '12', name: 'Dec' },
+                    ].map((m) => (
+                      <option key={m.val} value={m.val}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* View Switcher (List vs Matrix) */}
+                <div
+                  className="flex p-0.5 rounded-lg border"
+                  style={{
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f4f6f8',
+                    borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setHistoryViewMode('list')}
+                    title="List View"
+                    style={{
+                      padding: '5px 9px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backgroundColor: historyViewMode === 'list' ? '#f97316' : 'transparent',
+                      color: historyViewMode === 'list' ? '#ffffff' : textSecondary,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <List size={13} />
+                    <span>Table</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryViewMode('matrix')}
+                    title="12-Month Matrix"
+                    style={{
+                      padding: '5px 9px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backgroundColor: historyViewMode === 'matrix' ? '#f97316' : 'transparent',
+                      color: historyViewMode === 'matrix' ? '#ffffff' : textSecondary,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <LayoutGrid size={13} />
+                    <span>12-Month Ledger</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {sortedPayments.length === 0 ? (
-              <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-                <div style={{
-                  width: '56px', height: '56px', borderRadius: '12px',
-                  backgroundColor: 'rgba(249, 115, 22,0.08)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 14px',
-                }}>
-                  <FileText size={24} style={{ color: '#f97316' }} />
-                </div>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>{t('noHistory')}</p>
-                <p style={{ fontSize: '13px', color: textSecondary, marginTop: '4px' }}>Mark a payment to see it here.</p>
+            {/* Resident Financial Snapshot Bar */}
+            <div
+              style={{
+                padding: '12px 20px',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa',
+                borderBottom: `1px solid ${borderColor}`,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: '12px',
+              }}
+            >
+              <div>
+                <p style={{ fontSize: '10px', color: textSecondary, textTransform: 'uppercase', fontWeight: 600 }}>
+                  Filtered Paid
+                </p>
+                <p style={{ fontSize: '16px', fontWeight: 800, color: '#22c55e', marginTop: '2px' }}>
+                  ₹{(historyStats?.totalCollected || 0).toLocaleString('en-IN')}
+                </p>
               </div>
-            ) : (
-              <>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                    <thead>
-                      <tr>
-                        <th className="table-th">Receipt No</th>
-                        <th className="table-th">Period</th>
-                        <th className="table-th">{t('amount')}</th>
-                        <th className="table-th">{t('paidOn')}</th>
-                        <th className="table-th" style={{ textAlign: 'right' }}>{t('actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedPayments.map((payment) => (
-                        <tr
-                          key={payment.id}
-                          onClick={() => setSelectedPayment(payment)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <td className="table-td" style={{ fontWeight: 700, color: '#f97316', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <FileText size={14} style={{ opacity: 0.5 }} />
-                              {payment.receiptNumber}
-                            </div>
-                          </td>
-                          <td className="table-td" style={{ whiteSpace: 'nowrap', maxWidth: '180px' }}>{payment.month}</td>
-                          <td className="table-td" style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>₹{payment.amount.toLocaleString('en-IN')}</td>
-                          <td className="table-td" style={{ color: textSecondary, whiteSpace: 'nowrap' }}>
-                            {payment.paidOn ? format(new Date(payment.paidOn), 'dd MMM yyyy') : 'Pending'}
-                          </td>
-                          <td className="table-td">
-                            <div
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={() => handleDownloadReceipt(payment)}
-                                title={t('downloadReceipt')}
-                                disabled={payment.status !== 'paid'}
-                                style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: payment.status !== 'paid' ? 'not-allowed' : 'pointer', color: payment.status !== 'paid' ? '#c4cdd5' : '#919eab', opacity: payment.status !== 'paid' ? 0.4 : 1 }}
-                                onMouseEnter={(e) => { if (payment.status === 'paid') { e.currentTarget.style.backgroundColor = 'rgba(249, 115, 22,0.1)'; e.currentTarget.style.color = '#f97316'; } }}
-                                onMouseLeave={(e) => { if (payment.status === 'paid') { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; } }}
-                              >
-                                <Download size={14} />
-                              </button>
-                              <button
-                                onClick={() => sendWhatsApp(payment)}
-                                title={t('sendViaWhatsapp')}
-                                style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#919eab' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(37,211,102,0.1)'; e.currentTarget.style.color = '#25D366'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; }}
-                              >
-                                <WhatsAppBrandIcon size={14} />
-                              </button>
-                              <button
-                                onClick={() => setEditingPayment(payment)}
-                                title={t('edit')}
-                                style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#919eab' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(249, 115, 22,0.1)'; e.currentTarget.style.color = '#f97316'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; }}
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              {payment.status === 'paid' && (
-                                <button
-                                  onClick={() => { setReceiptToDelete(payment.id); setShowDeleteReceiptModal(true); }}
-                                  title="Delete Receipt"
-                                  style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#919eab' }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,171,0,0.1)'; e.currentTarget.style.color = '#ffab00'; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; }}
-                                >
-                                  <FileText size={14} />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => { setPaymentToDelete(payment.id); setShowDeletePaymentModal(true); }}
-                                title={t('delete')}
-                                style={{ padding: '6px', borderRadius: '6px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#919eab' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,86,48,0.1)'; e.currentTarget.style.color = '#ff5630'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#919eab'; }}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div>
+                <p style={{ fontSize: '10px', color: textSecondary, textTransform: 'uppercase', fontWeight: 600 }}>
+                  {targetMatrixYear} Paid
+                </p>
+                <p style={{ fontSize: '16px', fontWeight: 800, color: textPrimary, marginTop: '2px' }}>
+                  {historyStats.monthsPaidInYear} / 12 Months
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: '10px', color: textSecondary, textTransform: 'uppercase', fontWeight: 600 }}>
+                  {targetMatrixYear} Pending Dues
+                </p>
+                <p
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: 800,
+                    color: historyStats.totalDuesInYear > 0 ? '#ff5630' : '#22c55e',
+                    marginTop: '2px',
+                  }}
+                >
+                  {historyStats.totalDuesInYear > 0
+                    ? `₹${(historyStats.totalDuesInYear || 0).toLocaleString('en-IN')}`
+                    : 'All Clear'}
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: '10px', color: textSecondary, textTransform: 'uppercase', fontWeight: 600 }}>
+                  Standard Rate
+                </p>
+                <p style={{ fontSize: '16px', fontWeight: 800, color: textSecondary, marginTop: '2px' }}>
+                  ₹{(owner?.monthlyAmount ?? 2500).toLocaleString('en-IN')}/mo
+                </p>
+              </div>
+            </div>
+
+            {/* 12-MONTH MATRIX VIEW */}
+            {historyViewMode === 'matrix' ? (
+              <div style={{ padding: '20px' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} style={{ color: '#f97316' }} />
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>
+                      Annual {targetMatrixYear} Monthly Ledger for Flat {owner?.flat ?? ''}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold" style={{ color: textSecondary }}>
+                    {historyStats.monthsPaidInYear} Cleared • {historyStats.monthsPendingInYear} Pending
+                  </span>
                 </div>
 
-                {totalPages > 1 && (
-                  <div style={{
-                    padding: '12px 20px', borderTop: `1px solid ${borderColor}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  }}>
-                    <p style={{ fontSize: '12px', color: textSecondary }}>Page {currentPage} of {totalPages}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <button
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {monthsMatrix.map((m) => {
+                    const isSelectedInFilter = historyMonth === String(m.monthIndex + 1);
+                    return (
+                      <div
+                        key={m.monthKey}
+                        className="p-3 rounded-xl border flex flex-col justify-between transition-all"
                         style={{
-                          padding: '6px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                          backgroundColor: 'transparent', color: textSecondary, opacity: currentPage === 1 ? 0.3 : 1,
+                          backgroundColor: isDark
+                            ? isSelectedInFilter
+                              ? 'rgba(249, 115, 22, 0.12)'
+                              : 'rgba(255,255,255,0.02)'
+                            : isSelectedInFilter
+                              ? 'rgba(249, 115, 22, 0.06)'
+                              : '#ffffff',
+                          borderColor: isSelectedInFilter
+                            ? '#f97316'
+                            : m.isPaid
+                              ? isDark
+                                ? 'rgba(34, 197, 94, 0.25)'
+                                : 'rgba(34, 197, 94, 0.3)'
+                              : isDark
+                                ? 'rgba(255, 86, 48, 0.2)'
+                                : 'rgba(255, 86, 48, 0.25)',
                         }}
                       >
-                        <ChevronLeft size={15} />
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          style={{
-                            width: '28px', height: '28px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                            fontSize: '12px', fontWeight: 700,
-                            backgroundColor: page === currentPage ? '#f97316' : 'transparent',
-                            color: page === currentPage ? '#ffffff' : textSecondary,
-                          }}
-                        >
-                          {page}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                        style={{
-                          padding: '6px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                          backgroundColor: 'transparent', color: textSecondary, opacity: currentPage === totalPages ? 0.3 : 1,
-                        }}
-                      >
-                        <ChevronRight size={15} />
-                      </button>
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: textPrimary }}>
+                              {m.monthName} {targetMatrixYear}
+                            </span>
+                            {m.isPaid ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-green-500/15 text-green-500">
+                                <CheckCircle2 size={11} />
+                                PAID
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500">
+                                <AlertCircle size={11} />
+                                {m.isFuture ? 'UPCOMING' : 'PENDING'}
+                              </span>
+                            )}
+                          </div>
+
+                          <p style={{ fontSize: '14px', fontWeight: 800, color: m.isPaid ? '#22c55e' : textSecondary }}>
+                            ₹{(m.amount || 0).toLocaleString('en-IN')}
+                          </p>
+
+                          {m.isPaid && m.payment ? (
+                            <p style={{ fontSize: '11px', color: textSecondary, marginTop: '4px' }}>
+                              <span style={{ color: '#f97316', fontWeight: 600 }}>{m.payment.receiptNumber || 'Paid'}</span>
+                              {m.payment.paidOn && !isNaN(new Date(m.payment.paidOn).getTime()) && (
+                                <span className="block text-[10px] opacity-75">
+                                  {format(new Date(m.payment.paidOn), 'dd MMM yyyy')}
+                                </span>
+                              )}
+                            </p>
+                          ) : (
+                            <p style={{ fontSize: '11px', color: '#ff5630', marginTop: '4px' }}>
+                              {m.isFuture ? 'Not due yet' : 'Dues outstanding'}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Quick action button inside matrix tile */}
+                        <div className="mt-3 pt-2 border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8' }}>
+                          {m.isPaid && m.payment ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadReceipt(m.payment!)}
+                                title="Download Receipt"
+                                className="flex-1 py-1 text-[11px] font-bold rounded flex items-center justify-center gap-1"
+                                style={{
+                                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f4f6f8',
+                                  color: textSecondary,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <Download size={11} />
+                                PDF
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => sendWhatsApp(m.payment!)}
+                                title="WhatsApp"
+                                className="py-1 px-2 text-[11px] font-bold rounded flex items-center justify-center"
+                                style={{
+                                  backgroundColor: 'rgba(37,211,102,0.1)',
+                                  color: '#25D366',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <WhatsAppBrandIcon size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectMonthToPay(m.monthKey)}
+                              className="w-full py-1 text-[11px] font-bold rounded text-orange-500 hover:text-orange-400 bg-orange-500/10 hover:bg-orange-500/15 transition-all text-center"
+                            >
+                              Pay This Month
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* LIST VIEW (Table of filtered receipts) */
+              <>
+                {filteredPayments.length === 0 ? (
+                  <div style={{ padding: '64px 24px', textAlign: 'center' }}>
+                    <div
+                      style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '12px',
+                        backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 14px',
+                      }}
+                    >
+                      <FileText size={24} style={{ color: '#f97316' }} />
                     </div>
+                    <p style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>
+                      {ownerPayments.length === 0 ? t('noHistory') : 'No records match selected period'}
+                    </p>
+                    <p style={{ fontSize: '13px', color: textSecondary, marginTop: '4px' }}>
+                      {ownerPayments.length === 0
+                        ? 'Mark a payment to see it here.'
+                        : `No payment found for Year: ${historyYear === 'all' ? 'All' : historyYear}, Month: ${historyMonth === 'all' ? 'All' : historyMonth}.`}
+                    </p>
+                    {ownerPayments.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHistoryYear('all');
+                          setHistoryMonth('all');
+                          setCurrentPage(1);
+                        }}
+                        className="btn-primary mt-4 text-xs"
+                      >
+                        Reset Filters
+                      </button>
+                    )}
                   </div>
+                ) : (
+                  <>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                        <thead>
+                          <tr>
+                            <th className="table-th">Receipt No</th>
+                            <th className="table-th">Period</th>
+                            <th className="table-th">{t('amount')}</th>
+                            <th className="table-th">{t('paidOn')}</th>
+                            <th className="table-th" style={{ textAlign: 'right' }}>{t('actions')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedPayments.map((payment) => (
+                            <tr
+                              key={payment.id}
+                              onClick={() => setSelectedPayment(payment)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <td className="table-td" style={{ fontWeight: 700, color: '#f97316', whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <FileText size={14} style={{ opacity: 0.5 }} />
+                                  {payment.receiptNumber}
+                                </div>
+                              </td>
+                              <td className="table-td" style={{ whiteSpace: 'nowrap', maxWidth: '180px' }}>
+                                {payment.month}
+                              </td>
+                              <td className="table-td" style={{ fontWeight: 700, whiteSpace: 'nowrap', color: '#22c55e' }}>
+                                ₹{payment.amount.toLocaleString('en-IN')}
+                              </td>
+                              <td className="table-td" style={{ color: textSecondary, whiteSpace: 'nowrap' }}>
+                                {payment.paidOn ? format(new Date(payment.paidOn), 'dd MMM yyyy') : 'Pending'}
+                              </td>
+                              <td className="table-td">
+                                <div
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    onClick={() => handleDownloadReceipt(payment)}
+                                    title={t('downloadReceipt')}
+                                    disabled={payment.status !== 'paid'}
+                                    style={{
+                                      padding: '6px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      backgroundColor: 'transparent',
+                                      cursor: payment.status !== 'paid' ? 'not-allowed' : 'pointer',
+                                      color: payment.status !== 'paid' ? '#c4cdd5' : '#919eab',
+                                      opacity: payment.status !== 'paid' ? 0.4 : 1,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (payment.status === 'paid') {
+                                        e.currentTarget.style.backgroundColor = 'rgba(249, 115, 22,0.1)';
+                                        e.currentTarget.style.color = '#f97316';
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (payment.status === 'paid') {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                        e.currentTarget.style.color = '#919eab';
+                                      }
+                                    }}
+                                  >
+                                    <Download size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => sendWhatsApp(payment)}
+                                    title={t('sendViaWhatsapp')}
+                                    style={{
+                                      padding: '6px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      backgroundColor: 'transparent',
+                                      cursor: 'pointer',
+                                      color: '#919eab',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'rgba(37,211,102,0.1)';
+                                      e.currentTarget.style.color = '#25D366';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'transparent';
+                                      e.currentTarget.style.color = '#919eab';
+                                    }}
+                                  >
+                                    <WhatsAppBrandIcon size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingPayment(payment)}
+                                    title={t('edit')}
+                                    style={{
+                                      padding: '6px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      backgroundColor: 'transparent',
+                                      cursor: 'pointer',
+                                      color: '#919eab',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'rgba(249, 115, 22,0.1)';
+                                      e.currentTarget.style.color = '#f97316';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'transparent';
+                                      e.currentTarget.style.color = '#919eab';
+                                    }}
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  {payment.status === 'paid' && (
+                                    <button
+                                      onClick={() => {
+                                        setReceiptToDelete(payment.id);
+                                        setShowDeleteReceiptModal(true);
+                                      }}
+                                      title="Delete Receipt"
+                                      style={{
+                                        padding: '6px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        backgroundColor: 'transparent',
+                                        cursor: 'pointer',
+                                        color: '#919eab',
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,171,0,0.1)';
+                                        e.currentTarget.style.color = '#ffab00';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                        e.currentTarget.style.color = '#919eab';
+                                      }}
+                                    >
+                                      <FileText size={14} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      setPaymentToDelete(payment.id);
+                                      setShowDeletePaymentModal(true);
+                                    }}
+                                    title={t('delete')}
+                                    style={{
+                                      padding: '6px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      backgroundColor: 'transparent',
+                                      cursor: 'pointer',
+                                      color: '#919eab',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'rgba(255,86,48,0.1)';
+                                      e.currentTarget.style.color = '#ff5630';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'transparent';
+                                      e.currentTarget.style.color = '#919eab';
+                                    }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr
+                            style={{
+                              backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                              borderTop: `1px solid ${borderColor}`,
+                              fontWeight: 700,
+                            }}
+                          >
+                            <td className="table-td" colSpan={2} style={{ color: textPrimary }}>
+                              Filtered Total ({filteredPayments.length} records)
+                            </td>
+                            <td className="table-td" style={{ color: '#22c55e', fontWeight: 800 }}>
+                              ₹{(historyStats?.totalCollected || 0).toLocaleString('en-IN')}
+                            </td>
+                            <td className="table-td" colSpan={2} />
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {totalPages > 1 && (
+                      <div
+                        style={{
+                          padding: '12px 20px',
+                          borderTop: `1px solid ${borderColor}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <p style={{ fontSize: '12px', color: textSecondary }}>
+                          Page {currentPage} of {totalPages}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            style={{
+                              padding: '6px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              backgroundColor: 'transparent',
+                              color: textSecondary,
+                              opacity: currentPage === 1 ? 0.3 : 1,
+                            }}
+                          >
+                            <ChevronLeft size={15} />
+                          </button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                backgroundColor: page === currentPage ? '#f97316' : 'transparent',
+                                color: page === currentPage ? '#ffffff' : textSecondary,
+                              }}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            style={{
+                              padding: '6px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              backgroundColor: 'transparent',
+                              color: textSecondary,
+                              opacity: currentPage === totalPages ? 0.3 : 1,
+                            }}
+                          >
+                            <ChevronRight size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

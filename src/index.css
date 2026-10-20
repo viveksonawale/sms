@@ -408,3 +408,123 @@ html.dark .glass {
   background: linear-gradient(135deg, #ff5630 0%, #ffab00 50%, #f97316 100%);
   color: white;
 }
+
+/* =========================================
+   PRINT STYLES
+   ========================================= */
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  /* Force entire document tree to crisp white paper and pure black text */
+  *, *::before, *::after {
+    text-shadow: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html,
+  html.dark,
+  body,
+  html.dark body,
+  #root,
+  #root > div,
+  div,
+  main,
+  section {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    box-shadow: none !important;
+  }
+
+  html.dark * {
+    color: #000000 !important;
+    border-color: #000000 !important;
+  }
+
+  /* Hide app navigation and screen-only elements */
+  aside,
+  header,
+  nav,
+  .no-print,
+  #btn-print-report,
+  .btn-primary,
+  .btn-white,
+  button,
+  .toast-container {
+    display: none !important;
+  }
+
+  .page-enter, main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    background-color: #ffffff !important;
+  }
+
+  .print-only {
+    display: block !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    background-color: #ffffff !important;
+    margin-top: 8px !important;
+    border: 1px solid #000000 !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #000000 !important;
+    padding: 6px 8px !important;
+    font-size: 9pt !important;
+    color: #000000 !important;
+    background-color: #ffffff !important;
+  }
+
+  .print-table th {
+    background-color: #f3f4f6 !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+  }
+
+  .print-table tr:nth-child(even) td {
+    background-color: #f9fafb !important;
+  }
+
+  .print-table tfoot td {
+    background-color: #f3f4f6 !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+    border-top: 2px solid #000000 !important;
+  }
+}

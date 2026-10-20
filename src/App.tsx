@@ -17,6 +17,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Expenses = lazy(() => import('./pages/Expenses'));
 const AddExpense = lazy(() => import('./pages/AddExpense'));
 const Warnings = lazy(() => import('./pages/Warnings'));
+const Reports = lazy(() => import('./pages/Reports'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -122,6 +123,7 @@ function App() {
             <Route path="expenses/add" element={<AddExpense />} />
             <Route path="expenses/edit/:id" element={<AddExpense />} />
             <Route path="warnings" element={<Warnings />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

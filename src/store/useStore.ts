@@ -25,6 +25,8 @@ export interface Payment {
   receiptNumber: string;
   status: 'paid' | 'pending';
   transactionId?: string;
+  fromDate?: string;
+  toDate?: string;
 }
 
 export interface Expense {
@@ -68,17 +70,34 @@ interface StoreState {
   deleteExpense: (id: string) => Promise<void>;
 }
 
-const mapOwnerToFrontend = (o: any): Owner => ({
-  id: String(o.id),
-  name: o.name,
-  nameMr: o.nameInMarathi || '',
-  flat: o.flatNumber,
-  phone: o.phoneNo,
-  email: '',
-  monthlyAmount: 2500, // standard default
-  joinedDate: new Date().toISOString().split('T')[0],
-  avatar: null,
-});
+export const isShopUnit = (flatStr?: string): boolean => {
+  if (!flatStr) return false;
+  const s = flatStr.trim().toLowerCase();
+  return s.includes('shop') || s.startsWith('s-') || s.startsWith('s ') || /^s\d+/i.test(s);
+};
+
+export const getStandardMonthlyRate = (flatStr?: string): number => {
+  return isShopUnit(flatStr) ? 1200 : 3000;
+};
+
+const mapOwnerToFrontend = (o: any): Owner => {
+  const standardRate = getStandardMonthlyRate(o.flatNumber);
+  const monthlyAmount = (o.monthlyAmount && Number(o.monthlyAmount) !== 2500)
+    ? Number(o.monthlyAmount)
+    : standardRate;
+
+  return {
+    id: String(o.id),
+    name: o.name,
+    nameMr: o.nameInMarathi || '',
+    flat: o.flatNumber,
+    phone: o.phoneNo,
+    email: '',
+    monthlyAmount,
+    joinedDate: new Date().toISOString().split('T')[0],
+    avatar: null,
+  };
+};
 
 const mapExpenseToFrontend = (e: any): Expense => ({
   id: String(e.id),
@@ -116,6 +135,8 @@ const mapMaintenanceToFrontend = (m: any): Payment => {
     receiptNumber: m.status === 'PAID' ? `RCP-${String(m.id).padStart(4, '0')}` : '',
     status: m.status === 'PAID' ? 'paid' : 'pending',
     transactionId: m.transactionId || undefined,
+    fromDate: m.fromDate || undefined,
+    toDate: m.toDate || undefined,
   };
 };
 
