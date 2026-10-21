@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import { OwnerService } from '../api/owner.service';
 import { ExpenseService } from '../api/expense.service';
 import { MaintenanceService } from '../api/maintenance.service';
@@ -77,13 +78,83 @@ export const isShopUnit = (flatStr?: string): boolean => {
 };
 
 export const getStandardMonthlyRate = (flatStr?: string): number => {
-  return isShopUnit(flatStr) ? 1200 : 3000;
+  return isShopUnit(flatStr) ? 200 : 500;
+};
+
+/**
+ * Returns the list of month start dates (Date[]) that a payment actually covers,
+ * taking into account the owner's standard monthly rate (200 for shops, 500 for flats).
+ * When an admin records a lump sum (e.g. 1200 for shop), it splits the payment
+ * across floor(amount / rate) months (e.g. 1200 / 200 = 6 months).
+ */
+export const getCoveredMonthsForPayment = (
+  payment: Payment,
+  standardRate: number
+): Date[] => {
+  if (payment.status !== 'paid') return [];
+  const rate = standardRate > 0 ? standardRate : 500;
+
+  let pStart: Date | null = null;
+  let pEnd: Date | null = null;
+
+  if (payment.fromDate) {
+    try {
+      const parts = payment.fromDate.split('-').map(Number);
+      pStart = startOfMonth(new Date(parts[0], parts[1] - 1, 1));
+      if (payment.toDate) {
+        const toParts = payment.toDate.split('-').map(Number);
+        pEnd = endOfMonth(new Date(toParts[0], toParts[1] - 1, 1));
+      } else {
+        pEnd = endOfMonth(pStart);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!pStart && payment.month && payment.month !== 'Maintenance') {
+    try {
+      const parts = payment.month.split(' - ');
+      pStart = startOfMonth(new Date(parts[0]));
+      pEnd = parts.length === 2 ? endOfMonth(new Date(parts[1])) : endOfMonth(pStart);
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!pStart && payment.paidOn) {
+    try {
+      const d = new Date(payment.paidOn);
+      if (!isNaN(d.getTime())) {
+        pStart = startOfMonth(d);
+        pEnd = endOfMonth(d);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!pStart || isNaN(pStart.getTime())) return [];
+  if (!pEnd || isNaN(pEnd.getTime())) pEnd = endOfMonth(pStart);
+
+  const intervalMonths = eachMonthOfInterval({ start: pStart, end: pEnd });
+  const intervalCount = intervalMonths.length;
+
+  const amountCoveredCount = payment.amount > 0 ? Math.floor(payment.amount / rate) : 0;
+
+  const countToCover = amountCoveredCount > 0
+    ? Math.min(intervalCount, amountCoveredCount)
+    : 1;
+
+  return intervalMonths.slice(0, countToCover);
 };
 
 const mapOwnerToFrontend = (o: any): Owner => {
   const standardRate = getStandardMonthlyRate(o.flatNumber);
-  const monthlyAmount = (o.monthlyAmount && Number(o.monthlyAmount) !== 2500)
-    ? Number(o.monthlyAmount)
+  const rawAmount = o.monthlyAmount ? Number(o.monthlyAmount) : 0;
+  // If no amount or legacy placeholder amount (1200, 2500, 3000), use the new standard rate (500 for flats, 200 for shops)
+  const monthlyAmount = (rawAmount > 0 && ![1200, 2500, 3000].includes(rawAmount))
+    ? rawAmount
     : standardRate;
 
   return {

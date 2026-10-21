@@ -7,18 +7,29 @@ import {
   TrendingUp,
   TrendingDown,
   Calendar,
-  CheckCircle2,
-  AlertCircle,
   FileSpreadsheet,
   ChevronDown,
   ChevronUp,
   Receipt,
+  Building2,
+  Store,
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { useStore, type Payment, type Expense } from '../store/useStore';
+import { useStore, type Payment, type Expense, getCoveredMonthsForPayment, isShopUnit } from '../store/useStore';
 import Modal from '../components/Modal';
 
-type YearType = 'financial' | 'calendar';
+const EXPENSE_CATEGORIES = [
+  'All',
+  'Maintenance & Repair',
+  'Cleaning & Housekeeping',
+  'Security',
+  'Electricity',
+  'Water',
+  'Garden & Landscaping',
+  'Administrative',
+  'Festival & Events',
+  'Other',
+];
 
 export default function Reports() {
   const { t } = useTranslation();
@@ -49,24 +60,46 @@ export default function Reports() {
   const currentYear = now.getFullYear();
   const currentMonthIdx = now.getMonth(); // 0-based
 
-  // Available Years
-  const availableYears = [currentYear + 1, currentYear, currentYear - 1, currentYear - 2];
+  // Available Years - dynamically include all years from payments & defaults
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([currentYear, currentYear - 1, currentYear + 1]);
+    payments.forEach((p) => {
+      if (p.fromDate) {
+        const y = parseInt(p.fromDate.split('-')[0], 10);
+        if (!isNaN(y)) years.add(y);
+      }
+      if (p.paidOn) {
+        const y = new Date(p.paidOn).getFullYear();
+        if (!isNaN(y)) years.add(y);
+      }
+      if (p.month) {
+        const matches = p.month.match(/\d{4}/g);
+        if (matches) matches.forEach((m) => years.add(parseInt(m, 10)));
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [currentYear, payments]);
 
-  // Primary page filter state
-  const [yearType, setYearType] = useState<YearType>('financial');
-  // For financial year 2025 means FY 2025-2026 (Apr 2025 to Mar 2026)
-  const [selectedBaseYear, setSelectedBaseYear] = useState<number>(
-    currentMonthIdx >= 3 ? currentYear : currentYear - 1
-  );
+  // Primary page filter state - Calendar Year (January to December)
+  const [selectedBaseYear, setSelectedBaseYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 'all' or '0' - '11'
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOwnerId, setExpandedOwnerId] = useState<string | null>(null);
 
+  // Member Payment Ledger Table State
+  const [ledgerRangeMode, setLedgerRangeMode] = useState<'yearly' | 'monthly'>('yearly');
+  const [ledgerMonth, setLedgerMonth] = useState<string>(String(currentMonthIdx));
+
+  // Expense Table State
+  const [expenseRangeMode, setExpenseRangeMode] = useState<'yearly' | 'monthly'>('yearly');
+  const [expenseMonth, setExpenseMonth] = useState<string>(String(currentMonthIdx));
+  const [expenseSearch, setExpenseSearch] = useState<string>('');
+  const [expenseCategory, setExpenseCategory] = useState<string>('All');
+
   // Print & Export Modal State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printRangeMode, setPrintRangeMode] = useState<'yearly' | 'custom'>('yearly');
-  const [printYearType, setPrintYearType] = useState<YearType>('financial');
-  const [printBaseYear, setPrintBaseYear] = useState<number>(selectedBaseYear);
+  const [printBaseYear, setPrintBaseYear] = useState<number>(currentYear);
   const [customFromMonth, setCustomFromMonth] = useState<string>(
     `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}`
   );
@@ -75,33 +108,17 @@ export default function Reports() {
   );
   const [includeMemberLedger, setIncludeMemberLedger] = useState(true);
   const [includeExpenses, setIncludeExpenses] = useState(true);
-  const [includeMonthlySummary, setIncludeMonthlySummary] = useState(true);
 
-  // Helper: compute start & end Date for a given year & type
-  const getPeriodInterval = (type: YearType, baseYear: number, monthVal: string) => {
-    let start: Date;
-    let end: Date;
-
-    if (type === 'financial') {
-      if (monthVal === 'all') {
-        start = new Date(baseYear, 3, 1, 0, 0, 0); // Apr 1
-        end = new Date(baseYear + 1, 2, 31, 23, 59, 59); // Mar 31
-      } else {
-        const mIdx = parseInt(monthVal, 10);
-        const y = mIdx >= 3 ? baseYear : baseYear + 1;
-        start = startOfMonth(new Date(y, mIdx, 1));
-        end = endOfMonth(new Date(y, mIdx, 1));
-      }
-    } else {
-      if (monthVal === 'all') {
-        start = new Date(baseYear, 0, 1, 0, 0, 0); // Jan 1
-        end = new Date(baseYear, 11, 31, 23, 59, 59); // Dec 31
-      } else {
-        const mIdx = parseInt(monthVal, 10);
-        start = startOfMonth(new Date(baseYear, mIdx, 1));
-        end = endOfMonth(new Date(baseYear, mIdx, 1));
-      }
+  // Helper: compute start & end Date for calendar year (Jan 1 to Dec 31) or a specific month
+  const getPeriodInterval = (baseYear: number, monthVal: string) => {
+    if (monthVal === 'all') {
+      const start = startOfMonth(new Date(baseYear, 0, 1));
+      const end = endOfMonth(new Date(baseYear, 11, 1));
+      return { start, end };
     }
+    const mIdx = parseInt(monthVal, 10);
+    const start = startOfMonth(new Date(baseYear, mIdx, 1));
+    const end = endOfMonth(new Date(baseYear, mIdx, 1));
     return { start, end };
   };
 
@@ -109,28 +126,52 @@ export default function Reports() {
   const isPaymentInInterval = (payment: Payment, start: Date, end: Date) => {
     if (payment.status !== 'paid') return false;
 
-    // 1. If explicit fromDate / toDate exist
+    // 1. If explicit fromDate / toDate exist (yyyy-MM-dd format)
     if (payment.fromDate) {
-      const pFrom = new Date(payment.fromDate + 'T00:00:00');
-      const pTo = payment.toDate ? new Date(payment.toDate + 'T23:59:59') : pFrom;
-      return (pFrom <= end && pTo >= start);
-    }
+      const fromParts = payment.fromDate.split('-').map(Number);
+      const pFrom = fromParts.length >= 2
+        ? startOfMonth(new Date(fromParts[0], fromParts[1] - 1, 1))
+        : new Date(payment.fromDate + 'T00:00:00');
 
-    // 2. Fallback to month string parsing (e.g. "January 2025" or "Apr 2025 - Jun 2025")
-    if (payment.month) {
-      const parts = payment.month.split(' - ');
-      const pStart = startOfMonth(new Date(parts[0]));
-      const pEnd = parts.length === 2 ? endOfMonth(new Date(parts[1])) : endOfMonth(pStart);
-      if (!isNaN(pStart.getTime())) {
-        return (pStart <= end && pEnd >= start);
+      let pTo: Date;
+      if (payment.toDate) {
+        const toParts = payment.toDate.split('-').map(Number);
+        pTo = toParts.length >= 2
+          ? endOfMonth(new Date(toParts[0], toParts[1] - 1, 1))
+          : new Date(payment.toDate + 'T23:59:59');
+      } else {
+        pTo = endOfMonth(pFrom);
+      }
+
+      if (!isNaN(pFrom.getTime()) && !isNaN(pTo.getTime())) {
+        if (pFrom <= end && pTo >= start) return true;
       }
     }
 
-    // 3. Fallback to paidOn date
+    // 2. Fallback to month string parsing (e.g. "January 2025" or "Apr 2025 - Jun 2025")
+    if (payment.month && payment.month !== 'Maintenance') {
+      const parts = payment.month.split(' - ');
+      const pStart = startOfMonth(new Date(parts[0]));
+      const pEnd = parts.length === 2 ? endOfMonth(new Date(parts[1])) : endOfMonth(pStart);
+      if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
+        if (pStart <= end && pEnd >= start) return true;
+      }
+    }
+
+    // 3. Fallback to covered months
+    const owner = owners.find((o) => o.id === payment.ownerId);
+    const isShop = isShopUnit(owner?.flat);
+    const standardRate = isShop ? 200 : (owner?.monthlyAmount || 500);
+    const covered = getCoveredMonthsForPayment(payment, standardRate);
+    if (covered.length > 0) {
+      if (covered.some((d) => d <= end && endOfMonth(d) >= start)) return true;
+    }
+
+    // 4. Fallback to paidOn date
     if (payment.paidOn) {
       const pDate = new Date(payment.paidOn);
       if (!isNaN(pDate.getTime())) {
-        return isWithinInterval(pDate, { start, end });
+        if (isWithinInterval(pDate, { start, end })) return true;
       }
     }
 
@@ -147,31 +188,18 @@ export default function Reports() {
 
   // Active interval for on-screen dashboard view
   const activeInterval = useMemo(() => {
-    return getPeriodInterval(yearType, selectedBaseYear, selectedMonth);
-  }, [yearType, selectedBaseYear, selectedMonth]);
+    return getPeriodInterval(selectedBaseYear, selectedMonth);
+  }, [selectedBaseYear, selectedMonth]);
 
-  // Months list for the selected year
+  // Months list for the selected year (Calendar Year: January to December)
   const yearMonths = useMemo(() => {
     const list: { label: string; value: string; year: number; monthIdx: number }[] = [];
-    if (yearType === 'financial') {
-      // Apr (3) to Dec (11) of baseYear, then Jan (0) to Mar (2) of baseYear+1
-      for (let m = 3; m <= 11; m++) {
-        const d = new Date(selectedBaseYear, m, 1);
-        list.push({ label: format(d, 'MMM yyyy'), value: String(m), year: selectedBaseYear, monthIdx: m });
-      }
-      for (let m = 0; m <= 2; m++) {
-        const d = new Date(selectedBaseYear + 1, m, 1);
-        list.push({ label: format(d, 'MMM yyyy'), value: String(m), year: selectedBaseYear + 1, monthIdx: m });
-      }
-    } else {
-      // Jan (0) to Dec (11) of baseYear
-      for (let m = 0; m <= 11; m++) {
-        const d = new Date(selectedBaseYear, m, 1);
-        list.push({ label: format(d, 'MMM yyyy'), value: String(m), year: selectedBaseYear, monthIdx: m });
-      }
+    for (let m = 0; m <= 11; m++) {
+      const d = new Date(selectedBaseYear, m, 1);
+      list.push({ label: format(d, 'MMMM yyyy'), value: String(m), year: selectedBaseYear, monthIdx: m });
     }
     return list;
-  }, [yearType, selectedBaseYear]);
+  }, [selectedBaseYear]);
 
   // Filtered Payments & Expenses for Active On-Screen View
   const periodPayments = useMemo(() => {
@@ -210,74 +238,41 @@ export default function Reports() {
     };
   }, [periodPayments, periodExpenses, payments, expenses, now]);
 
-  // Monthly Financial Breakdown Table
-  const monthlyBreakdown = useMemo(() => {
-    return yearMonths.map((ym) => {
-      const mStart = startOfMonth(new Date(ym.year, ym.monthIdx, 1));
-      const mEnd = endOfMonth(new Date(ym.year, ym.monthIdx, 1));
+  // Table 1: Member Ledger Interval & Payments
+  const ledgerInterval = useMemo(() => {
+    const monthVal = ledgerRangeMode === 'yearly' ? 'all' : ledgerMonth;
+    return getPeriodInterval(selectedBaseYear, monthVal);
+  }, [selectedBaseYear, ledgerRangeMode, ledgerMonth]);
 
-      const mPayments = payments.filter((p) => isPaymentInInterval(p, mStart, mEnd));
-      const mExpenses = expenses.filter((e) => isExpenseInInterval(e, mStart, mEnd));
+  const ledgerPayments = useMemo(() => {
+    return payments.filter((p) => isPaymentInInterval(p, ledgerInterval.start, ledgerInterval.end));
+  }, [payments, ledgerInterval, isPaymentInInterval]);
 
-      const collections = mPayments.reduce((acc, p) => acc + p.amount, 0);
-      const expenseTotal = mExpenses.reduce((acc, e) => acc + e.amount, 0);
-      const paidMembersCount = new Set(mPayments.map((p) => p.ownerId)).size;
-
-      return {
-        ...ym,
-        collections,
-        expenses: expenseTotal,
-        net: collections - expenseTotal,
-        paidMembersCount,
-      };
-    });
-  }, [yearMonths, payments, expenses]);
-
-  // Category Breakdown for Expenses
-  const categoryExpenses = useMemo(() => {
-    const map: Record<string, { total: number; count: number }> = {};
-    periodExpenses.forEach((e) => {
-      const cat = e.category || 'Other';
-      if (!map[cat]) map[cat] = { total: 0, count: 0 };
-      map[cat].total += e.amount;
-      map[cat].count += 1;
-    });
-
-    return Object.entries(map)
-      .map(([category, data]) => ({
-        category,
-        total: data.total,
-        count: data.count,
-        percentage: financialStats.totalExpenses > 0 ? (data.total / financialStats.totalExpenses) * 100 : 0,
-      }))
-      .sort((a, b) => b.total - a.total);
-  }, [periodExpenses, financialStats.totalExpenses]);
-
-  // Member Payment Ledger (Who Paid What)
+  // Member Payment Ledger (STRICTLY ONLY PEOPLE WHO PAID)
   const memberLedger = useMemo(() => {
-    return owners.map((owner) => {
-      const ownerPayments = periodPayments.filter((p) => p.ownerId === owner.id);
-      const totalPaid = ownerPayments.reduce((acc, p) => acc + p.amount, 0);
+    return owners
+      .map((owner) => {
+        const ownerPayments = ledgerPayments.filter((p) => p.ownerId === owner.id);
+        const totalPaid = ownerPayments.reduce((acc, p) => acc + p.amount, 0);
 
-      // Estimate expected based on months in active period
-      const monthsInPeriod = selectedMonth === 'all' ? 12 : 1;
-      const expectedAmount = owner.monthlyAmount * monthsInPeriod;
-      const pendingAmount = Math.max(0, expectedAmount - totalPaid);
+        const monthsCovered = ownerPayments
+          .map((p) => p.month)
+          .filter(Boolean)
+          .join(', ');
 
-      let status: 'clear' | 'partial' | 'pending' = 'clear';
-      if (totalPaid === 0) status = 'pending';
-      else if (totalPaid < expectedAmount) status = 'partial';
+        return {
+          owner,
+          totalPaid,
+          monthsCovered: monthsCovered || 'Maintenance',
+          payments: ownerPayments,
+        };
+      })
+      .filter((m) => m.totalPaid > 0); // Only show people who actually paid!
+  }, [owners, ledgerPayments]);
 
-      return {
-        owner,
-        totalPaid,
-        expectedAmount,
-        pendingAmount,
-        status,
-        payments: ownerPayments,
-      };
-    });
-  }, [owners, periodPayments, selectedMonth]);
+  const ledgerTotalCollected = useMemo(() => {
+    return memberLedger.reduce((sum, m) => sum + m.totalPaid, 0);
+  }, [memberLedger]);
 
   const filteredMembers = useMemo(() => {
     const s = searchTerm.toLowerCase();
@@ -285,14 +280,41 @@ export default function Reports() {
       (m) =>
         m.owner.name.toLowerCase().includes(s) ||
         m.owner.flat.toLowerCase().includes(s) ||
-        (m.owner.nameMr && m.owner.nameMr.toLowerCase().includes(s))
+        (m.owner.nameMr && m.owner.nameMr.toLowerCase().includes(s)) ||
+        (m.owner.phone && m.owner.phone.includes(s))
     );
   }, [memberLedger, searchTerm]);
+
+  // Table 2: Expense Table Interval & Filtered List
+  const expenseTableInterval = useMemo(() => {
+    const monthVal = expenseRangeMode === 'yearly' ? 'all' : expenseMonth;
+    return getPeriodInterval(selectedBaseYear, monthVal);
+  }, [selectedBaseYear, expenseRangeMode, expenseMonth]);
+
+  const filteredTableExpenses = useMemo(() => {
+    const list = expenses.filter((e) => isExpenseInInterval(e, expenseTableInterval.start, expenseTableInterval.end));
+    return list
+      .filter((e) => {
+        const matchesCat = expenseCategory === 'All' || e.category === expenseCategory;
+        const s = expenseSearch.toLowerCase();
+        const matchesSearch =
+          !s ||
+          e.title.toLowerCase().includes(s) ||
+          e.paidTo.toLowerCase().includes(s) ||
+          (e.note && e.note.toLowerCase().includes(s));
+        return matchesCat && matchesSearch;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [expenses, expenseTableInterval, expenseCategory, expenseSearch]);
+
+  const tableExpenseTotal = useMemo(() => {
+    return filteredTableExpenses.reduce((sum, e) => sum + e.amount, 0);
+  }, [filteredTableExpenses]);
 
   // Interval calculation for Print Mode
   const printInterval = useMemo(() => {
     if (printRangeMode === 'yearly') {
-      return getPeriodInterval(printYearType, printBaseYear, 'all');
+      return getPeriodInterval(printBaseYear, 'all');
     } else {
       const [fY, fM] = customFromMonth.split('-').map(Number);
       const [tY, tM] = customToMonth.split('-').map(Number);
@@ -300,16 +322,12 @@ export default function Reports() {
       const end = endOfMonth(new Date(tY, tM - 1, 1));
       return { start, end };
     }
-  }, [printRangeMode, printYearType, printBaseYear, customFromMonth, customToMonth]);
+  }, [printRangeMode, printBaseYear, customFromMonth, customToMonth]);
 
   // Period label for print report
   const printPeriodLabel = useMemo(() => {
     if (printRangeMode === 'yearly') {
-      if (printYearType === 'financial') {
-        return `Financial Year: April ${printBaseYear} - March ${printBaseYear + 1}`;
-      } else {
-        return `Calendar Year: January ${printBaseYear} - December ${printBaseYear}`;
-      }
+      return `Calendar Year: January ${printBaseYear} - December ${printBaseYear}`;
     } else {
       const [fY, fM] = customFromMonth.split('-').map(Number);
       const [tY, tM] = customToMonth.split('-').map(Number);
@@ -317,12 +335,12 @@ export default function Reports() {
       const end = new Date(tY, tM - 1, 1);
       return `${format(start, 'MMMM yyyy')} - ${format(end, 'MMMM yyyy')}`;
     }
-  }, [printRangeMode, printYearType, printBaseYear, customFromMonth, customToMonth]);
+  }, [printRangeMode, printBaseYear, customFromMonth, customToMonth]);
 
   // Print Data Calculations
   const printPayments = useMemo(() => {
     return payments.filter((p) => isPaymentInInterval(p, printInterval.start, printInterval.end));
-  }, [payments, printInterval]);
+  }, [payments, printInterval, isPaymentInInterval]);
 
   const printExpenses = useMemo(() => {
     return expenses.filter((e) => isExpenseInInterval(e, printInterval.start, printInterval.end));
@@ -344,7 +362,12 @@ export default function Reports() {
       .map((owner) => {
         const oPayments = printPayments.filter((p) => p.ownerId === owner.id);
         const totalPaid = oPayments.reduce((acc, p) => acc + p.amount, 0);
-        const monthsCovered = oPayments.map((p) => p.month).filter(Boolean).join(', ');
+
+        const monthsCovered = oPayments
+          .map((p) => p.month)
+          .filter(Boolean)
+          .join(', ');
+
         const receiptNumbers = oPayments.map((p) => p.receiptNumber).filter(Boolean).join(', ');
         return {
           owner,
@@ -390,11 +413,10 @@ export default function Reports() {
 
   // CSV Export Function
   const handleExportCSV = () => {
-    const headers = ['Flat Number', 'Owner Name', 'Contact', 'Total Paid (INR)', 'Months Covered', 'Receipts'];
+    const headers = ['Flat Number', 'Owner Name', 'Total Paid (INR)', 'Months Covered', 'Receipts'];
     const rows = printMemberLedger.map((m) => [
       `"${m.owner.flat}"`,
       `"${m.owner.name}${m.owner.nameMr ? ` (${m.owner.nameMr})` : ''}"`,
-      `"${m.owner.phone}"`,
       m.totalPaid,
       `"${m.monthsCovered}"`,
       `"${printPayments.filter((p) => p.ownerId === m.owner.id).map((p) => p.receiptNumber).filter(Boolean).join('; ')}"`,
@@ -402,7 +424,7 @@ export default function Reports() {
 
     const csvContent = [
       `"Society: ${societyName}"`,
-      `"Report: Annual Financial & Maintenance Ledger"`,
+      `"Report: Annual Calendar Year Financial & Maintenance Ledger"`,
       `"Period: ${printPeriodLabel}"`,
       `"Total Collected: INR ${printTotalCollected}"`,
       `"Total Expenses: INR ${printTotalExpenses}"`,
@@ -479,47 +501,6 @@ export default function Reports() {
         }}
       >
         <div className="flex flex-col sm:flex-row flex-wrap sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-          {/* Year Type Switcher - Segmented Control */}
-          <div
-            className="flex p-1 rounded-lg w-full sm:w-auto"
-            style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8' }}
-          >
-            <button
-              onClick={() => setYearType('financial')}
-              className="flex-1 sm:flex-initial text-center transition-all"
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: 700,
-                borderRadius: '6px',
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: yearType === 'financial' ? '#f97316' : 'transparent',
-                color: yearType === 'financial' ? '#ffffff' : textSecondary,
-                touchAction: 'manipulation',
-              }}
-            >
-              {t('financialYear')}
-            </button>
-            <button
-              onClick={() => setYearType('calendar')}
-              className="flex-1 sm:flex-initial text-center transition-all"
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: 700,
-                borderRadius: '6px',
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: yearType === 'calendar' ? '#f97316' : 'transparent',
-                color: yearType === 'calendar' ? '#ffffff' : textSecondary,
-                touchAction: 'manipulation',
-              }}
-            >
-              {t('calendarYear')}
-            </button>
-          </div>
-
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Year Dropdown */}
             <select
@@ -535,7 +516,7 @@ export default function Reports() {
             >
               {availableYears.map((y) => (
                 <option key={y} value={y}>
-                  {yearType === 'financial' ? `FY ${y}-${y + 1}` : `Year ${y}`}
+                  Year {y}
                 </option>
               ))}
             </select>
@@ -566,9 +547,7 @@ export default function Reports() {
         <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 self-start sm:self-auto">
           <Calendar size={14} />
           <span>
-            {yearType === 'financial'
-              ? `FY ${selectedBaseYear}-${selectedBaseYear + 1}`
-              : `CY ${selectedBaseYear}`}
+            Year {selectedBaseYear}
             {selectedMonth !== 'all' && ` • ${yearMonths.find((m) => m.value === selectedMonth)?.label}`}
           </span>
         </div>
@@ -754,125 +733,7 @@ export default function Reports() {
       </div>
 
       {/* ========================================================
-          SCREEN VIEW: Monthly Breakdown Statement (12 Months)
-          ======================================================== */}
-      {selectedMonth === 'all' && (
-        <div
-          className="no-print rounded-xl overflow-hidden"
-          style={{
-            backgroundColor: cardBg,
-            boxShadow: isDark
-              ? '0 0 2px 0 rgba(0,0,0,0.3), 0 12px 24px -4px rgba(0,0,0,0.2)'
-              : '0 0 2px 0 rgba(145,158,171,0.2), 0 12px 24px -4px rgba(145,158,171,0.12)',
-          }}
-        >
-          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor }}>
-            <div>
-              <h2 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary }}>
-                {t('includeMonthlySummary')}
-              </h2>
-              <p style={{ fontSize: '12px', color: textSecondary }}>
-                Month-by-month financial summary of collections and expenses
-              </p>
-            </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-500">
-              12 Months Breakdown
-            </span>
-          </div>
-
-          <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '600px' }}>
-              <thead>
-                <tr
-                  style={{
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f9fafb',
-                    borderBottom: `1px solid ${borderColor}`,
-                    color: textSecondary,
-                  }}
-                >
-                  <th className="py-3 px-4 font-semibold">{t('month')}</th>
-                  <th className="py-3 px-4 font-semibold text-right">{t('collections')}</th>
-                  <th className="py-3 px-4 font-semibold text-right">{t('expenses')}</th>
-                  <th className="py-3 px-4 font-semibold text-right">{t('netBalance')}</th>
-                  <th className="py-3 px-4 font-semibold text-center">Paid Flats</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyBreakdown.map((row) => (
-                  <tr
-                    key={row.label}
-                    style={{
-                      borderBottom: `1px solid ${borderColor}`,
-                      transition: 'background-color 0.15s ease',
-                    }}
-                    className="hover:bg-black/5 dark:hover:bg-white/5"
-                  >
-                    <td className="py-3 px-4 font-bold" style={{ color: textPrimary }}>
-                      {row.label}
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-right text-green-500">
-                      ₹{row.collections.toLocaleString('en-IN')}
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-right text-red-500">
-                      ₹{row.expenses.toLocaleString('en-IN')}
-                    </td>
-                    <td
-                      className={`py-3 px-4 font-bold text-right ${row.net >= 0 ? 'text-blue-500' : 'text-red-400'
-                        }`}
-                    >
-                      ₹{row.net.toLocaleString('en-IN')}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className="inline-block px-2 py-0.5 rounded text-xs font-bold"
-                        style={{
-                          backgroundColor:
-                            row.paidMembersCount > 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(145, 158, 171, 0.12)',
-                          color: row.paidMembersCount > 0 ? '#22c55e' : textSecondary,
-                        }}
-                      >
-                        {row.paidMembersCount} / {owners.length}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr
-                  style={{
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
-                    fontWeight: 800,
-                  }}
-                >
-                  <td className="py-3.5 px-4" style={{ color: textPrimary }}>
-                    ANNUAL TOTAL
-                  </td>
-                  <td className="py-3.5 px-4 text-right text-green-600 dark:text-green-400">
-                    ₹{financialStats.totalCollected.toLocaleString('en-IN')}
-                  </td>
-                  <td className="py-3.5 px-4 text-right text-red-600 dark:text-red-400">
-                    ₹{financialStats.totalExpenses.toLocaleString('en-IN')}
-                  </td>
-                  <td
-                    className={`py-3.5 px-4 text-right ${financialStats.netBalance >= 0
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-red-500'
-                      }`}
-                  >
-                    ₹{financialStats.netBalance.toLocaleString('en-IN')}
-                  </td>
-                  <td className="py-3.5 px-4 text-center text-xs" style={{ color: textSecondary }}>
-                    {owners.length} Total Units
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================
-          SCREEN VIEW: Member Payment Ledger ("Who Paid What")
+          SCREEN VIEW: Member Payment Ledger (PAID MEMBERS ONLY)
           ======================================================== */}
       <div
         className="no-print rounded-xl overflow-hidden"
@@ -881,32 +742,94 @@ export default function Reports() {
           boxShadow: isDark
             ? '0 0 2px 0 rgba(0,0,0,0.3), 0 12px 24px -4px rgba(0,0,0,0.2)'
             : '0 0 2px 0 rgba(145,158,171,0.2), 0 12px 24px -4px rgba(145,158,171,0.12)',
+          border: `1px solid ${borderColor}`,
         }}
       >
-        <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor }}>
+        <div className="p-4 border-b flex flex-col lg:flex-row lg:items-center justify-between gap-3" style={{ borderColor }}>
           <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary }}>
-              {t('memberLedger')} ({t('whoPaidWhat')})
-            </h2>
-            <p style={{ fontSize: '12px', color: textSecondary }}>
-              Individual member maintenance payment audit for selected period
+            <div className="flex items-center gap-2">
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary }}>
+                {t('memberLedger')} (Paid Members Only)
+              </h2>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-500">
+                {filteredMembers.length} Paid
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>
+              Showing only residents who paid maintenance for the selected period
             </p>
           </div>
 
-          {/* Search Member Filter */}
-          <div className="relative w-full sm:w-64">
-            <Search
-              size={15}
-              style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#919eab' }}
-            />
-            <input
-              type="text"
-              placeholder={t('searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field text-xs"
-              style={{ paddingLeft: '32px', height: '36px' }}
-            />
+          {/* Controls: Yearly/Monthly switch + Month Picker + Search */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            {/* Yearly / Monthly Toggle */}
+            <div
+              className="flex p-0.5 rounded-lg border text-xs shrink-0"
+              style={{
+                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f4f6f8',
+                borderColor,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setLedgerRangeMode('yearly')}
+                className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                  ledgerRangeMode === 'yearly'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Yearly
+              </button>
+              <button
+                type="button"
+                onClick={() => setLedgerRangeMode('monthly')}
+                className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                  ledgerRangeMode === 'monthly'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Monthly
+              </button>
+            </div>
+
+            {/* Month selector if Monthly */}
+            {ledgerRangeMode === 'monthly' && (
+              <select
+                value={ledgerMonth}
+                onChange={(e) => setLedgerMonth(e.target.value)}
+                className="input-field text-xs font-semibold cursor-pointer shrink-0 !w-auto"
+                style={{
+                  height: '36px',
+                  padding: '6px 28px 6px 12px',
+                  lineHeight: 'normal',
+                  minWidth: '130px',
+                }}
+              >
+                {yearMonths.map((ym) => (
+                  <option key={ym.value} value={ym.value}>
+                    {ym.label}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-52 shrink-0">
+              <Search
+                size={14}
+                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#919eab' }}
+              />
+              <input
+                type="text"
+                placeholder={t('searchPlaceholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field text-xs"
+                style={{ paddingLeft: '32px', height: '36px', lineHeight: 'normal' }}
+              />
+            </div>
           </div>
         </div>
 
@@ -920,25 +843,26 @@ export default function Reports() {
                   color: textSecondary,
                 }}
               >
-                <th className="py-3 px-4 font-semibold">{t('flat')}</th>
-                <th className="py-3 px-4 font-semibold">{t('owner')}</th>
-                <th className="py-3 px-4 font-semibold">{t('contact')}</th>
-                <th className="py-3 px-4 font-semibold text-right">{t('totalPaid')}</th>
-                <th className="py-3 px-4 font-semibold text-right">Expected Dues</th>
-                <th className="py-3 px-4 font-semibold text-center">{t('status')}</th>
-                <th className="py-3 px-4 font-semibold text-center">{t('actions')}</th>
+                <th className="py-3 px-4 font-semibold" style={{ width: '16%' }}>{t('flat')}</th>
+                <th className="py-3 px-4 font-semibold" style={{ width: '32%' }}>{t('owner')}</th>
+                <th className="py-3 px-4 font-semibold" style={{ width: '26%' }}>Months / Period Covered</th>
+                <th className="py-3 px-4 font-semibold text-right" style={{ width: '13%' }}>{t('totalPaid')}</th>
+                <th className="py-3 px-4 font-semibold text-center" style={{ width: '13%' }}>{t('receipt')}</th>
               </tr>
             </thead>
             <tbody>
               {filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-sm" style={{ color: textSecondary }}>
-                    {t('noResultsFound')}
+                  <td colSpan={5} className="py-12 text-center text-sm" style={{ color: textSecondary }}>
+                    <Receipt size={32} className="mx-auto mb-2 opacity-40 text-orange-500" />
+                    <p className="font-semibold">No payments recorded for this selected period</p>
+                    <p className="text-xs opacity-75 mt-0.5">Only residents who paid in this timeframe are listed here.</p>
                   </td>
                 </tr>
               ) : (
-                filteredMembers.map(({ owner, totalPaid, expectedAmount, pendingAmount, status, payments: oPayments }) => {
+                filteredMembers.map(({ owner, totalPaid, monthsCovered, payments: oPayments }) => {
                   const isExpanded = expandedOwnerId === owner.id;
+                  const isShop = owner.flat.toLowerCase().includes('shop');
                   return (
                     <>
                       <tr
@@ -946,10 +870,20 @@ export default function Reports() {
                         style={{
                           borderBottom: `1px solid ${borderColor}`,
                         }}
-                        className="hover:bg-black/5 dark:hover:bg-white/5"
+                        className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                       >
                         <td className="py-3 px-4 font-bold" style={{ color: '#f97316' }}>
-                          {owner.flat}
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold"
+                            style={{
+                              backgroundColor: isDark ? 'rgba(249,115,22,0.14)' : 'rgba(249,115,22,0.08)',
+                              color: '#f97316',
+                              border: '1px solid rgba(249,115,22,0.25)',
+                            }}
+                          >
+                            {isShop ? <Store size={11} /> : <Building2 size={11} />}
+                            {owner.flat}
+                          </span>
                         </td>
                         <td className="py-3 px-4">
                           <div className="font-bold" style={{ color: textPrimary }}>
@@ -961,39 +895,25 @@ export default function Reports() {
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-xs font-mono" style={{ color: textSecondary }}>
-                          +{owner.phone}
+                        <td className="py-3 px-4 text-xs font-medium" style={{ color: textPrimary }}>
+                          <span className="line-clamp-1" title={monthsCovered}>
+                            {monthsCovered}
+                          </span>
                         </td>
-                        <td className="py-3 px-4 font-bold text-right text-green-500">
+                        <td className="py-3 px-4 font-bold text-right text-green-500 text-sm">
                           ₹{totalPaid.toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-3 px-4 font-medium text-right text-xs" style={{ color: textSecondary }}>
-                          ₹{expectedAmount.toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {status === 'clear' ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-500">
-                              <CheckCircle2 size={12} />
-                              {t('allClear')}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
-                              <AlertCircle size={12} />
-                              ₹{pendingAmount.toLocaleString('en-IN')} Due
-                            </span>
-                          )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <button
                             type="button"
                             onClick={() => setExpandedOwnerId(isExpanded ? null : owner.id)}
-                            className="text-xs font-semibold px-2.5 py-1 rounded-md border flex items-center gap-1 mx-auto"
+                            className="text-xs font-semibold px-2.5 py-1 rounded-md border flex items-center gap-1 mx-auto transition-colors hover:border-orange-500/50 hover:text-orange-500 cursor-pointer"
                             style={{
                               borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb',
                               color: textSecondary,
                             }}
                           >
-                            <span>{oPayments.length} Receipts</span>
+                            <span>{oPayments.length} Receipt(s)</span>
                             {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                           </button>
                         </td>
@@ -1004,45 +924,39 @@ export default function Reports() {
                         <tr
                           key={`expanded-${owner.id}`}
                           style={{
-                            backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : '#f9fafb',
+                            backgroundColor: isDark ? 'rgba(0,0,0,0.25)' : '#f9fafb',
                             borderBottom: `1px solid ${borderColor}`,
                           }}
                         >
-                          <td colSpan={7} className="p-4">
-                            <div className="pl-6 border-l-2 border-orange-500 space-y-2">
+                          <td colSpan={5} className="p-4">
+                            <div className="pl-4 border-l-2 border-orange-500 space-y-2">
                               <p className="text-xs font-bold uppercase tracking-wider" style={{ color: textSecondary }}>
-                                Detailed Payment Receipts for Flat {owner.flat} ({owner.name}):
+                                Detailed Receipts for {owner.name} ({owner.flat}):
                               </p>
-                              {oPayments.length === 0 ? (
-                                <p className="text-xs italic" style={{ color: textSecondary }}>
-                                  No payment recorded in this selected timeframe.
-                                </p>
-                              ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                  {oPayments.map((p) => (
-                                    <div
-                                      key={p.id}
-                                      className="p-2.5 rounded-lg border text-xs"
-                                      style={{
-                                        backgroundColor: cardBg,
-                                        borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
-                                      }}
-                                    >
-                                      <div className="flex items-center justify-between font-bold">
-                                        <span style={{ color: '#f97316' }}>{p.receiptNumber || `RCP-${p.id}`}</span>
-                                        <span className="text-green-500">₹{p.amount.toLocaleString('en-IN')}</span>
-                                      </div>
-                                      <div className="mt-1" style={{ color: textPrimary }}>
-                                        {p.month}
-                                      </div>
-                                      <div className="mt-1 flex items-center justify-between text-[11px]" style={{ color: textSecondary }}>
-                                        <span>Paid: {p.paidOn ? format(new Date(p.paidOn), 'dd MMM yyyy') : 'Recorded'}</span>
-                                        {p.transactionId && <span className="font-mono">UTR: {p.transactionId}</span>}
-                                      </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {oPayments.map((p) => (
+                                  <div
+                                    key={p.id}
+                                    className="p-2.5 rounded-lg border text-xs"
+                                    style={{
+                                      backgroundColor: cardBg,
+                                      borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between font-bold">
+                                      <span style={{ color: '#f97316' }}>{p.receiptNumber || `RCP-${p.id}`}</span>
+                                      <span className="text-green-500 font-bold">₹{p.amount.toLocaleString('en-IN')}</span>
                                     </div>
-                                  ))}
-                                </div>
-                              )}
+                                    <div className="mt-1 font-medium" style={{ color: textPrimary }}>
+                                      {p.month}
+                                    </div>
+                                    <div className="mt-1 flex items-center justify-between text-[11px]" style={{ color: textSecondary }}>
+                                      <span>Date: {p.paidOn ? format(new Date(p.paidOn), 'dd MMM yyyy') : 'Recorded'}</span>
+                                      {p.transactionId && <span className="font-mono">UTR: {p.transactionId}</span>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -1052,12 +966,33 @@ export default function Reports() {
                 })
               )}
             </tbody>
+            {filteredMembers.length > 0 && (
+              <tfoot>
+                <tr
+                  style={{
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb',
+                    borderTop: `2px solid ${borderColor}`,
+                    fontWeight: 800,
+                  }}
+                >
+                  <td colSpan={3} className="py-3 px-4 font-bold" style={{ color: textPrimary }}>
+                    Total: {filteredMembers.length} Members Paid ({ledgerRangeMode === 'yearly' ? 'Whole Year' : 'Selected Month'})
+                  </td>
+                  <td className="py-3 px-4 text-right text-green-500 font-bold text-sm">
+                    ₹{ledgerTotalCollected.toLocaleString('en-IN')}
+                  </td>
+                  <td className="py-3 px-4 text-center text-xs font-semibold" style={{ color: textSecondary }}>
+                    {filteredMembers.reduce((acc, m) => acc + m.payments.length, 0)} Total Receipts
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
 
       {/* ========================================================
-          SCREEN VIEW: Society Operational Expenses Breakdown
+          SCREEN VIEW: Society Operational Expenses Table
           ======================================================== */}
       <div
         className="no-print rounded-xl overflow-hidden"
@@ -1066,64 +1001,203 @@ export default function Reports() {
           boxShadow: isDark
             ? '0 0 2px 0 rgba(0,0,0,0.3), 0 12px 24px -4px rgba(0,0,0,0.2)'
             : '0 0 2px 0 rgba(145,158,171,0.2), 0 12px 24px -4px rgba(145,158,171,0.12)',
+          border: `1px solid ${borderColor}`,
         }}
       >
-        <div className="p-4 border-b flex items-center justify-between" style={{ borderColor }}>
+        <div className="p-4 border-b flex flex-col lg:flex-row lg:items-center justify-between gap-3" style={{ borderColor }}>
           <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary }}>
-              Society Operational Expenses ({t('breakdown')})
-            </h2>
-            <p style={{ fontSize: '12px', color: textSecondary }}>
-              Breakdown of maintenance expenditure incurred by category
+            <div className="flex items-center gap-2">
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary }}>
+                Society Operational Expenses
+              </h2>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500">
+                {filteredTableExpenses.length} Vouchers
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>
+              Itemized maintenance and society expenditure vouchers
             </p>
           </div>
-          <span className="text-xs font-bold text-red-500">
-            Total: ₹{financialStats.totalExpenses.toLocaleString('en-IN')}
-          </span>
-        </div>
 
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categoryExpenses.length === 0 ? (
-            <p className="text-xs italic col-span-3 text-center py-4" style={{ color: textSecondary }}>
-              {t('noExpenses')}
-            </p>
-          ) : (
-            categoryExpenses.map((cat) => (
-              <div
-                key={cat.category}
-                className="p-3.5 rounded-lg border flex flex-col justify-between"
+          {/* Controls: Yearly/Monthly switch + Month Picker + Category + Search */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            {/* Yearly / Monthly Toggle */}
+            <div
+              className="flex p-0.5 rounded-lg border text-xs shrink-0"
+              style={{
+                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f4f6f8',
+                borderColor,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setExpenseRangeMode('yearly')}
+                className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                  expenseRangeMode === 'yearly'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Yearly
+              </button>
+              <button
+                type="button"
+                onClick={() => setExpenseRangeMode('monthly')}
+                className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                  expenseRangeMode === 'monthly'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Monthly
+              </button>
+            </div>
+
+            {/* Month selector if Monthly */}
+            {expenseRangeMode === 'monthly' && (
+              <select
+                value={expenseMonth}
+                onChange={(e) => setExpenseMonth(e.target.value)}
+                className="input-field text-xs font-semibold cursor-pointer shrink-0 !w-auto"
                 style={{
-                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8',
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa',
+                  height: '36px',
+                  padding: '6px 28px 6px 12px',
+                  lineHeight: 'normal',
+                  minWidth: '130px',
                 }}
               >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm" style={{ color: textPrimary }}>
-                      {cat.category}
-                    </span>
-                    <span className="text-xs font-bold text-red-500">
-                      ₹{cat.total.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <p className="text-xs mt-1" style={{ color: textSecondary }}>
-                    {cat.count} voucher(s) recorded
-                  </p>
-                </div>
-                <div className="mt-3">
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-red-500 h-full rounded-full"
-                      style={{ width: `${Math.min(100, Math.max(5, cat.percentage))}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-right block mt-1" style={{ color: textSecondary }}>
-                    {cat.percentage.toFixed(1)}% of total expenses
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
+                {yearMonths.map((ym) => (
+                  <option key={ym.value} value={ym.value}>
+                    {ym.label}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Category Dropdown */}
+            <select
+              value={expenseCategory}
+              onChange={(e) => setExpenseCategory(e.target.value)}
+              className="input-field text-xs font-semibold cursor-pointer shrink-0 !w-auto"
+              style={{
+                height: '36px',
+                padding: '6px 28px 6px 12px',
+                lineHeight: 'normal',
+                minWidth: '140px',
+              }}
+            >
+              {EXPENSE_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-52 shrink-0">
+              <Search
+                size={14}
+                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#919eab' }}
+              />
+              <input
+                type="text"
+                placeholder="Search title, vendor..."
+                value={expenseSearch}
+                onChange={(e) => setExpenseSearch(e.target.value)}
+                className="input-field text-xs"
+                style={{ paddingLeft: '32px', height: '36px', lineHeight: 'normal' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '650px' }}>
+            <thead>
+              <tr
+                style={{
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                  borderBottom: `1px solid ${borderColor}`,
+                  color: textSecondary,
+                }}
+              >
+                <th className="py-3 px-4 font-semibold">Date</th>
+                <th className="py-3 px-4 font-semibold">Title / Description</th>
+                <th className="py-3 px-4 font-semibold">Category</th>
+                <th className="py-3 px-4 font-semibold">Paid To</th>
+                <th className="py-3 px-4 font-semibold text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTableExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-sm" style={{ color: textSecondary }}>
+                    <TrendingDown size={32} className="mx-auto mb-2 opacity-40 text-red-500" />
+                    <p className="font-semibold">No expenses recorded for this selected period</p>
+                    <p className="text-xs opacity-75 mt-0.5">Try changing the period filter or category above.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredTableExpenses.map((exp) => (
+                  <tr
+                    key={exp.id}
+                    style={{
+                      borderBottom: `1px solid ${borderColor}`,
+                    }}
+                    className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  >
+                    <td className="py-3 px-4 text-xs font-mono whitespace-nowrap" style={{ color: textSecondary }}>
+                      {exp.date ? format(parseISO(exp.date), 'dd/MM/yyyy') : '—'}
+                    </td>
+                    <td className="py-3 px-4 font-semibold" style={{ color: textPrimary }}>
+                      <div>{exp.title}</div>
+                      {exp.note && (
+                        <div className="text-xs font-normal mt-0.5" style={{ color: textSecondary }}>
+                          {exp.note}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold"
+                        style={{
+                          backgroundColor: 'rgba(249, 115, 22, 0.14)',
+                          color: '#f97316',
+                          border: '1px solid rgba(249, 115, 22, 0.25)',
+                        }}
+                      >
+                        {exp.category}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-xs" style={{ color: textSecondary }}>
+                      {exp.paidTo || '—'}
+                    </td>
+                    <td className="py-3 px-4 font-bold text-right text-red-500 font-mono text-sm">
+                      ₹{exp.amount.toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {filteredTableExpenses.length > 0 && (
+              <tfoot>
+                <tr
+                  style={{
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb',
+                    borderTop: `2px solid ${borderColor}`,
+                    fontWeight: 800,
+                  }}
+                >
+                  <td colSpan={4} className="py-3 px-4 font-bold" style={{ color: textPrimary }}>
+                    Total: {filteredTableExpenses.length} Expense Vouchers ({expenseRangeMode === 'yearly' ? 'Whole Year' : 'Selected Month'})
+                  </td>
+                  <td className="py-3 px-4 text-right text-red-500 font-bold text-sm font-mono">
+                    ₹{tableExpenseTotal.toLocaleString('en-IN')}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
         </div>
       </div>
 
@@ -1156,7 +1230,7 @@ export default function Reports() {
                     color: printRangeMode === 'yearly' ? '#ffffff' : textSecondary,
                   }}
                 >
-                  Yearly / Financial Year
+                  Full Calendar Year (Jan - Dec)
                 </button>
                 <button
                   type="button"
@@ -1174,36 +1248,21 @@ export default function Reports() {
 
             {/* Yearly Configuration */}
             {printRangeMode === 'yearly' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-lg border" style={{ borderColor }}>
-                <div>
-                  <label className="text-xs font-semibold block mb-1" style={{ color: textSecondary }}>
-                    Year Type:
-                  </label>
-                  <select
-                    value={printYearType}
-                    onChange={(e) => setPrintYearType(e.target.value as YearType)}
-                    className="input-field text-xs font-semibold cursor-pointer"
-                  >
-                    <option value="financial">Financial Year (Apr - Mar)</option>
-                    <option value="calendar">Calendar Year (Jan - Dec)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold block mb-1" style={{ color: textSecondary }}>
-                    Year Selection:
-                  </label>
-                  <select
-                    value={printBaseYear}
-                    onChange={(e) => setPrintBaseYear(Number(e.target.value))}
-                    className="input-field text-xs font-bold cursor-pointer"
-                  >
-                    {availableYears.map((y) => (
-                      <option key={y} value={y}>
-                        {printYearType === 'financial' ? `${y} - ${y + 1}` : `${y}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="p-3.5 rounded-lg border" style={{ borderColor }}>
+                <label className="text-xs font-semibold block mb-1" style={{ color: textSecondary }}>
+                  Calendar Year:
+                </label>
+                <select
+                  value={printBaseYear}
+                  onChange={(e) => setPrintBaseYear(Number(e.target.value))}
+                  className="input-field text-xs font-bold cursor-pointer"
+                >
+                  {availableYears.map((y) => (
+                    <option key={y} value={y}>
+                      Year {y}
+                    </option>
+                  ))}
+                </select>
               </div>
             ) : (
               /* Custom Range Configuration */
@@ -1246,7 +1305,7 @@ export default function Reports() {
                     onChange={(e) => setIncludeMemberLedger(e.target.checked)}
                     className="accent-orange-500 w-4 h-4 cursor-pointer"
                   />
-                  <span>{t('includeMemberLedger')} (Who Paid What & Receipt audit)</span>
+                  <span>Member Maintenance Payment Ledger (Paid Members Only)</span>
                 </label>
                 <label className="flex items-center gap-2.5 text-xs font-semibold cursor-pointer" style={{ color: textPrimary }}>
                   <input
@@ -1255,16 +1314,7 @@ export default function Reports() {
                     onChange={(e) => setIncludeExpenses(e.target.checked)}
                     className="accent-orange-500 w-4 h-4 cursor-pointer"
                   />
-                  <span>{t('includeExpenses')}</span>
-                </label>
-                <label className="flex items-center gap-2.5 text-xs font-semibold cursor-pointer" style={{ color: textPrimary }}>
-                  <input
-                    type="checkbox"
-                    checked={includeMonthlySummary}
-                    onChange={(e) => setIncludeMonthlySummary(e.target.checked)}
-                    className="accent-orange-500 w-4 h-4 cursor-pointer"
-                  />
-                  <span>{t('includeMonthlySummary')}</span>
+                  <span>Society Operational Expenditure Table</span>
                 </label>
               </div>
             </div>
@@ -1788,93 +1838,7 @@ export default function Reports() {
           </div>
         )}
 
-        {/* ── SECTION 3: MONTHLY SUMMARY ── */}
-        {includeMonthlySummary && (
-          <div className="print-break-inside-avoid" style={{ marginBottom: '22px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <div
-                style={{
-                  width: '4px',
-                  height: '18px',
-                  backgroundColor: '#f97316',
-                  borderRadius: '2px',
-                  flexShrink: 0,
-                }}
-              />
-              <h2
-                style={{
-                  fontSize: '11pt',
-                  fontWeight: 800,
-                  margin: 0,
-                  color: '#f97316',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                Section 3  Monthly Financial Breakdown
-              </h2>
-            </div>
-
-            <table
-              className="print-table"
-              style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#ffffff' }}
-            >
-              <thead>
-                <tr style={{ backgroundColor: '#1c252e' }}>
-                  {["Month", "Collections (₹)", "Expenses (₹)", "Net (₹)", "Paid Members"].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        padding: '8px 10px',
-                        border: '1px solid #1c252e',
-                        color: '#ffffff',
-                        fontWeight: 800,
-                        fontSize: '8.5pt',
-                        textAlign: h === 'Month' || h === 'Paid Members' ? 'center' : 'right',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.3px',
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyBreakdown.map((row, idx) => (
-                  <tr key={row.label} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fff7ed' }}>
-                    <td style={{ fontWeight: 700, padding: '6px 10px', border: '1px solid #e5e7eb', color: '#1c252e', fontSize: '9pt', textAlign: 'center' }}>
-                      {row.label}
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '6px 10px', border: '1px solid #e5e7eb', color: '#15803d', fontWeight: 700, fontSize: '9pt' }}>
-                      ₹{row.collections.toLocaleString('en-IN')}
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '6px 10px', border: '1px solid #e5e7eb', color: '#b91c1c', fontWeight: 700, fontSize: '9pt' }}>
-                      ₹{row.expenses.toLocaleString('en-IN')}
-                    </td>
-                    <td style={{ textAlign: 'right', padding: '6px 10px', border: '1px solid #e5e7eb', color: row.net >= 0 ? '#f97316' : '#b91c1c', fontWeight: 800, fontSize: '9pt' }}>
-                      ₹{row.net.toLocaleString('en-IN')}
-                    </td>
-                    <td style={{ textAlign: 'center', padding: '6px 10px', border: '1px solid #e5e7eb', color: '#1c252e', fontSize: '9pt' }}>
-                      {row.paidMembersCount} / {owners.length}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr style={{ backgroundColor: '#1c252e' }}>
-                  <td style={{ padding: '8px 10px', border: '1px solid #1c252e', color: '#ffffff', fontWeight: 900, fontSize: '9pt', textAlign: 'center' }}>ANNUAL TOTAL</td>
-                  <td style={{ textAlign: 'right', padding: '8px 10px', border: '1px solid #1c252e', color: '#86efac', fontWeight: 900, fontSize: '10pt' }}>₹{printTotalCollected.toLocaleString('en-IN')}</td>
-                  <td style={{ textAlign: 'right', padding: '8px 10px', border: '1px solid #1c252e', color: '#fca5a5', fontWeight: 900, fontSize: '10pt' }}>₹{printTotalExpenses.toLocaleString('en-IN')}</td>
-                  <td style={{ textAlign: 'right', padding: '8px 10px', border: '1px solid #1c252e', color: printNetBalance >= 0 ? '#fed7aa' : '#fca5a5', fontWeight: 900, fontSize: '10pt' }}>₹{printNetBalance.toLocaleString('en-IN')}</td>
-                  <td style={{ textAlign: 'center', padding: '8px 10px', border: '1px solid #1c252e', color: '#919eab', fontWeight: 700, fontSize: '9pt' }}>{owners.length} Units</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-
-        {/* ── SECTION 4: SOCIETY EXPENSES ── */}
+        {/* ── SECTION 3: SOCIETY EXPENSES ── */}
         {includeExpenses && (
           <div className="print-break-inside-avoid" style={{ marginBottom: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
@@ -1897,7 +1861,7 @@ export default function Reports() {
                   letterSpacing: '0.5px',
                 }}
               >
-                Section 4  Society Operational Expenditure
+                Section 3  Society Operational Expenditure
               </h2>
             </div>
 

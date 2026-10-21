@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { format, startOfMonth, endOfMonth, isSameMonth, eachMonthOfInterval } from 'date-fns';
+import { format, isSameMonth, eachMonthOfInterval, addMonths } from 'date-fns';
 import {
   ArrowLeft, Trash2, Download, FileText,
   Pencil, X, Check, ChevronLeft, ChevronRight,
   Phone, Calendar, IndianRupee, Building2,
   List, LayoutGrid, CheckCircle2, AlertCircle,
 } from 'lucide-react';
-import { useStore, isShopUnit, getStandardMonthlyRate } from '../store/useStore';
+import { useStore, isShopUnit, getCoveredMonthsForPayment } from '../store/useStore';
 
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
@@ -36,6 +36,14 @@ export default function OwnerDetail() {
   const textPrimary = isDark ? '#ffffff' : '#1c252e';
   const textSecondary = isDark ? '#919eab' : '#637381';
   const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8';
+
+  const owner = useStore((state) => state.owners.find((o) => o.id === id));
+  const isShop = isShopUnit(owner?.flat);
+  const standardMonthlyRate = isShop
+    ? 200
+    : (owner?.monthlyAmount && ![1200, 2500, 3000].includes(owner.monthlyAmount)
+      ? owner.monthlyAmount
+      : 500);
 
   // --- Custom Month Picker Component ---
   const MonthYearPicker = ({
@@ -82,11 +90,8 @@ export default function OwnerDetail() {
       const d = new Date(dateStr + '-01');
       const alreadyPaid = existingPayments.some(p => {
         if (p.status !== 'paid') return false;
-        const parts = p.month.split(' - ');
-        const parsePDate = (str: string) => startOfMonth(new Date(str));
-        const start = parsePDate(parts[0]);
-        const end = parts.length === 2 ? parsePDate(parts[1]) : start;
-        return d >= start && d <= end;
+        const covered = getCoveredMonthsForPayment(p, standardMonthlyRate);
+        return covered.some(cm => isSameMonth(cm, d));
       });
 
       return alreadyPaid;
@@ -207,7 +212,6 @@ export default function OwnerDetail() {
     );
   };
 
-  const owner = useStore((state) => state.owners.find((o) => o.id === id));
   const allPayments = useStore((state) => state.payments);
   const ownerPayments = useMemo(() => allPayments.filter((p) => p.ownerId === id), [allPayments, id]);
   const addPayment = useStore((state) => state.addPayment);
@@ -237,15 +241,29 @@ export default function OwnerDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const isShop = isShopUnit(owner?.flat);
-  const standardMonthlyRate = (owner?.monthlyAmount && owner.monthlyAmount !== 2500)
-    ? owner.monthlyAmount
-    : getStandardMonthlyRate(owner?.flat);
-
   const [paymentFromDate, setPaymentFromDate] = useState(format(new Date(), 'yyyy-MM'));
   const [paymentToDate, setPaymentToDate] = useState(format(new Date(), 'yyyy-MM'));
   const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
   const [paymentTransactionId, setPaymentTransactionId] = useState('');
+
+  const handlePaymentAmountChange = (valStr: string) => {
+    if (valStr === '') {
+      setPaymentAmount('');
+      return;
+    }
+    const val = Number(valStr);
+    setPaymentAmount(val);
+
+    // If admin enters a lump sum, calculate how many months it covers and sync To Month
+    if (standardMonthlyRate > 0 && val >= standardMonthlyRate) {
+      const covered = Math.floor(val / standardMonthlyRate);
+      if (covered >= 1) {
+        const start = new Date(paymentFromDate + '-01T12:00:00');
+        const newEnd = addMonths(start, covered - 1);
+        setPaymentToDate(format(newEnd, 'yyyy-MM'));
+      }
+    }
+  };
 
   const totalMonthsPaid = useMemo(() => {
     try {
@@ -352,68 +370,24 @@ export default function OwnerDetail() {
   const matchesYearAndMonth = (p: typeof ownerPayments[0], yFilter: string, mFilter: string) => {
     if (yFilter === 'all' && mFilter === 'all') return true;
 
-    let start: Date | null = null;
-    let end: Date | null = null;
-
-    if (p.fromDate) {
-      try {
-        const pStart = startOfMonth(new Date(p.fromDate + 'T00:00:00'));
-        const pEnd = p.toDate ? endOfMonth(new Date(p.toDate + 'T23:59:59')) : endOfMonth(pStart);
-        if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
-          start = pStart;
-          end = pEnd;
-        }
-      } catch {
-        // ignore date error
-      }
-    } else if (p.month && typeof p.month === 'string') {
-      try {
-        const parts = p.month.split(' - ');
-        const pStart = startOfMonth(new Date(parts[0]));
-        const pEnd = parts.length === 2 ? endOfMonth(new Date(parts[1])) : endOfMonth(pStart);
-        if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
-          start = pStart;
-          end = pEnd;
-        }
-      } catch {
-        // ignore date error
-      }
-    }
-
-    if (!start && p.paidOn) {
-      try {
+    const covered = getCoveredMonthsForPayment(p, standardMonthlyRate);
+    if (covered.length === 0) {
+      if (p.paidOn) {
         const d = new Date(p.paidOn);
         if (!isNaN(d.getTime())) {
-          start = startOfMonth(d);
-          end = endOfMonth(d);
+          if (yFilter !== 'all' && String(d.getFullYear()) !== yFilter) return false;
+          if (mFilter !== 'all' && String(d.getMonth() + 1) !== mFilter) return false;
+          return true;
         }
-      } catch {
-        // ignore date error
       }
+      return true;
     }
 
-    if (!start || !end) return true;
-
-    const startYear = start.getFullYear();
-    const endYear = end.getFullYear();
-
-    if (yFilter !== 'all') {
-      const targetYear = Number(yFilter);
-      if (startYear > targetYear || endYear < targetYear) {
-        return false;
-      }
-    }
-
-    if (mFilter !== 'all') {
-      const targetMonthIdx = Number(mFilter) - 1; // 0-based
-      const targetYear = yFilter !== 'all' ? Number(yFilter) : startYear;
-      const targetDate = new Date(targetYear, targetMonthIdx, 15);
-      if (targetDate < start || targetDate > end) {
-        return false;
-      }
-    }
-
-    return true;
+    return covered.some((d) => {
+      const yMatches = yFilter === 'all' || String(d.getFullYear()) === yFilter;
+      const mMatches = mFilter === 'all' || String(d.getMonth() + 1) === mFilter;
+      return yMatches && mMatches;
+    });
   };
 
   const sortedPayments = useMemo(
@@ -442,35 +416,23 @@ export default function OwnerDetail() {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
 
+    // Pre-calculate covered months for each paid payment using standard monthly rate
+    const coveredByPayment = ownerPayments
+      .filter((p) => p.status === 'paid')
+      .map((p) => ({
+        payment: p,
+        coveredMonths: getCoveredMonthsForPayment(p, standardMonthlyRate),
+      }));
+
     for (let idx = 0; idx < 12; idx++) {
       const monthStart = new Date(targetMatrixYear, idx, 1);
       const monthKey = format(monthStart, 'yyyy-MM');
       const monthName = months[idx];
 
-      // Check if this month is paid for this owner
-      const matchingPayment = ownerPayments.find((p) => {
-        if (p.status !== 'paid') return false;
-        try {
-          if (p.fromDate) {
-            const pStart = startOfMonth(new Date(p.fromDate + 'T00:00:00'));
-            const pEnd = p.toDate ? endOfMonth(new Date(p.toDate + 'T23:59:59')) : endOfMonth(pStart);
-            if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
-              return monthStart >= pStart && monthStart <= pEnd;
-            }
-          }
-          if (p.month && typeof p.month === 'string') {
-            const parts = p.month.split(' - ');
-            const pStart = startOfMonth(new Date(parts[0]));
-            const pEnd = parts.length === 2 ? endOfMonth(new Date(parts[1])) : endOfMonth(pStart);
-            if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
-              return monthStart >= pStart && monthStart <= pEnd;
-            }
-          }
-        } catch {
-          // ignore
-        }
-        return false;
-      });
+      // Find matching payment that covers this month
+      const match = coveredByPayment.find((item) =>
+        item.coveredMonths.some((d) => isSameMonth(d, monthStart))
+      );
 
       const isFuture = monthStart > new Date();
 
@@ -478,10 +440,10 @@ export default function OwnerDetail() {
         monthIndex: idx,
         monthName,
         monthKey,
-        isPaid: !!matchingPayment,
-        payment: matchingPayment || null,
+        isPaid: !!match,
+        payment: match ? match.payment : null,
         isFuture,
-        amount: matchingPayment ? matchingPayment.amount : standardMonthlyRate,
+        amount: standardMonthlyRate, // Always show the standard monthly rate (₹200 for shop, ₹500 for flat)!
       });
     }
 
@@ -576,36 +538,27 @@ export default function OwnerDetail() {
 
     // Build start/end Date objects from the validated keys (noon local time to avoid UTC-day-boundary issues)
     const start = new Date(startKey + '-01T12:00:00');
-    const end = new Date(endKey + '-01T12:00:00');
 
-    const period = isSameMonth(start, end)
+    // Calculate how many months the payment amount actually covers
+    const coveredMonthsCount = Math.max(1, Math.floor(Number(paymentAmount) / standardMonthlyRate));
+    const finalEnd = addMonths(start, coveredMonthsCount - 1);
+    const finalEndKey = format(finalEnd, 'yyyy-MM');
+
+    const period = isSameMonth(start, finalEnd)
       ? format(start, 'MMMM yyyy')
-      : `${format(start, 'MMM yyyy')} - ${format(end, 'MMM yyyy')}`;
-
-    // Build a helper that expands a stored payment's period string into
-    // all the individual month-start dates it covers.
-    const expandPaymentMonths = (p: typeof ownerPayments[0]): Date[] => {
-      const parts = p.month.split(' - ');
-      const parsePDate = (str: string) => startOfMonth(new Date(str));
-      const pStart = parsePDate(parts[0]);
-      const pEnd = parts.length === 2 ? parsePDate(parts[1]) : pStart;
-      // Guard against invalid dates
-      if (isNaN(pStart.getTime()) || isNaN(pEnd.getTime())) return [];
-      return eachMonthOfInterval({ start: pStart, end: pEnd });
-    };
+      : `${format(start, 'MMM yyyy')} - ${format(finalEnd, 'MMM yyyy')}`;
 
     // Collect all months that are already marked as PAID for this owner.
     const paidMonthKeys = new Set<string>();
     ownerPayments.forEach((p) => {
       if (p.status !== 'paid') return;
-      expandPaymentMonths(p).forEach((d) => {
-        // Key: "YYYY-MM" for fast O(1) lookup
+      getCoveredMonthsForPayment(p, standardMonthlyRate).forEach((d) => {
         paidMonthKeys.add(format(d, 'yyyy-MM'));
       });
     });
 
     // Enumerate every month in the requested range and check for duplicates.
-    const requestedMonths = eachMonthOfInterval({ start, end });
+    const requestedMonths = eachMonthOfInterval({ start, end: finalEnd });
     const duplicateMonth = requestedMonths.find((m) =>
       paidMonthKeys.has(format(m, 'yyyy-MM'))
     );
@@ -625,7 +578,7 @@ export default function OwnerDetail() {
       transactionId: paymentTransactionId || undefined,
     };
     try {
-      await addPayment(tempPayment, { fromDate: paymentFromDate, toDate: paymentToDate });
+      await addPayment(tempPayment, { fromDate: startKey, toDate: finalEndKey });
       // After fetchPayments completes inside addPayment, get the real payment from the store
       // by finding the most recently added paid payment for this owner
       const freshPayments = useStore.getState().payments;
@@ -1015,11 +968,19 @@ export default function OwnerDetail() {
                     <IndianRupee size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#919eab' }} />
                     <input
                       type="number" value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      onChange={(e) => handlePaymentAmountChange(e.target.value)}
                       className="input-field" style={{ paddingLeft: '36px', fontWeight: 700, fontSize: '16px' }}
                       min={1} required placeholder="0"
                     />
                   </div>
+                  {paymentAmount && standardMonthlyRate > 0 && (
+                    <p style={{ fontSize: '12px', color: '#f97316', marginTop: '6px', fontWeight: 600 }}>
+                      ₹{standardMonthlyRate.toLocaleString('en-IN')}/mo × {Math.max(1, Math.floor(Number(paymentAmount) / standardMonthlyRate))} Month(s) = ₹{(Math.floor(Number(paymentAmount) / standardMonthlyRate) * standardMonthlyRate).toLocaleString('en-IN')}
+                      {Number(paymentAmount) % standardMonthlyRate !== 0 && (
+                        <span style={{ color: '#ff5630', marginLeft: '6px' }}>(Remaining ₹{Number(paymentAmount) % standardMonthlyRate} unallocated)</span>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <button type="submit" className="btn-primary w-full justify-center" style={{ marginTop: '4px', padding: '12px' }}>
                   {t('confirmPayment')}
@@ -1294,7 +1255,7 @@ export default function OwnerDetail() {
                   Standard Rate
                 </p>
                 <p style={{ fontSize: '16px', fontWeight: 800, color: textSecondary, marginTop: '2px' }}>
-                  ₹{(owner?.monthlyAmount ?? 2500).toLocaleString('en-IN')}/mo
+                  ₹{(standardMonthlyRate).toLocaleString('en-IN')}/mo
                 </p>
               </div>
             </div>
