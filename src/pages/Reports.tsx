@@ -13,10 +13,17 @@ import {
   Receipt,
   Building2,
   Store,
+  Download,
+  Loader2,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { useStore, type Payment, type Expense, getCoveredMonthsForPayment, isShopUnit } from '../store/useStore';
 import Modal from '../components/Modal';
+import { useToast } from '../context/ToastContext';
+import { ReceiptService } from '../api/receipt.service';
+import { generateReceiptPDF } from '../utils/pdf';
 
 const EXPENSE_CATEGORIES = [
   'All',
@@ -30,6 +37,65 @@ const EXPENSE_CATEGORIES = [
   'Festival & Events',
   'Other',
 ];
+
+export const getCategoryBadgeStyle = (category: string, isDark: boolean) => {
+  switch (category) {
+    case 'Maintenance & Repair':
+      return {
+        bg: isDark ? 'rgba(249,115,22,0.15)' : 'rgba(249,115,22,0.09)',
+        color: '#f97316',
+        border: isDark ? '1px solid rgba(249,115,22,0.3)' : '1px solid rgba(249,115,22,0.25)',
+      };
+    case 'Security':
+      return {
+        bg: isDark ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.09)',
+        color: isDark ? '#c084fc' : '#9333ea',
+        border: isDark ? '1px solid rgba(168,85,247,0.3)' : '1px solid rgba(168,85,247,0.25)',
+      };
+    case 'Electricity':
+      return {
+        bg: isDark ? 'rgba(234,179,8,0.15)' : 'rgba(234,179,8,0.1)',
+        color: isDark ? '#facc15' : '#ca8a04',
+        border: isDark ? '1px solid rgba(234,179,8,0.3)' : '1px solid rgba(234,179,8,0.25)',
+      };
+    case 'Water':
+      return {
+        bg: isDark ? 'rgba(56,189,248,0.15)' : 'rgba(14,165,233,0.09)',
+        color: isDark ? '#38bdf8' : '#0284c7',
+        border: isDark ? '1px solid rgba(56,189,248,0.3)' : '1px solid rgba(14,165,233,0.25)',
+      };
+    case 'Cleaning & Housekeeping':
+      return {
+        bg: isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.09)',
+        color: isDark ? '#4ade80' : '#16a34a',
+        border: isDark ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(34,197,94,0.25)',
+      };
+    case 'Festival & Events':
+      return {
+        bg: isDark ? 'rgba(244,63,94,0.15)' : 'rgba(244,63,94,0.09)',
+        color: isDark ? '#fb7185' : '#e11d48',
+        border: isDark ? '1px solid rgba(244,63,94,0.3)' : '1px solid rgba(244,63,94,0.25)',
+      };
+    case 'Garden & Landscaping':
+      return {
+        bg: isDark ? 'rgba(20,184,166,0.15)' : 'rgba(20,184,166,0.09)',
+        color: isDark ? '#2dd4bf' : '#0d9488',
+        border: isDark ? '1px solid rgba(20,184,166,0.3)' : '1px solid rgba(20,184,166,0.25)',
+      };
+    case 'Administrative':
+      return {
+        bg: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.09)',
+        color: isDark ? '#818cf8' : '#4f46e5',
+        border: isDark ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(99,102,241,0.25)',
+      };
+    default:
+      return {
+        bg: isDark ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.1)',
+        color: isDark ? '#cbd5e1' : '#475569',
+        border: isDark ? '1px solid rgba(148,163,184,0.3)' : '1px solid rgba(148,163,184,0.25)',
+      };
+  }
+};
 
 export default function Reports() {
   const { t } = useTranslation();
@@ -50,9 +116,12 @@ export default function Reports() {
   const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8';
 
   useEffect(() => {
-    fetchOwners();
-    fetchPayments();
-    fetchExpenses();
+    const loadData = async () => {
+      await fetchOwners();
+      await fetchPayments();
+      await fetchExpenses();
+    };
+    loadData();
   }, [fetchOwners, fetchPayments, fetchExpenses]);
 
   // Current date
@@ -60,12 +129,16 @@ export default function Reports() {
   const currentYear = now.getFullYear();
   const currentMonthIdx = now.getMonth(); // 0-based
 
-  // Available Years - dynamically include all years from payments & defaults
+  // Available Years - dynamically include all years from payments, expenses & defaults
   const availableYears = useMemo(() => {
     const years = new Set<number>([currentYear, currentYear - 1, currentYear + 1]);
     payments.forEach((p) => {
       if (p.fromDate) {
         const y = parseInt(p.fromDate.split('-')[0], 10);
+        if (!isNaN(y)) years.add(y);
+      }
+      if (p.toDate) {
+        const y = parseInt(p.toDate.split('-')[0], 10);
         if (!isNaN(y)) years.add(y);
       }
       if (p.paidOn) {
@@ -77,14 +150,96 @@ export default function Reports() {
         if (matches) matches.forEach((m) => years.add(parseInt(m, 10)));
       }
     });
+    expenses.forEach((e) => {
+      if (e.date) {
+        const y = new Date(e.date).getFullYear();
+        if (!isNaN(y)) years.add(y);
+      }
+    });
     return Array.from(years).sort((a, b) => b - a);
-  }, [currentYear, payments]);
+  }, [currentYear, payments, expenses]);
+
+  // Determine latest year that actually has payments or expenses recorded
+  const recordedDataYear = useMemo(() => {
+    const yearsWithData: number[] = [];
+    payments.forEach((p) => {
+      if (p.fromDate) {
+        const y = parseInt(p.fromDate.split('-')[0], 10);
+        if (!isNaN(y)) yearsWithData.push(y);
+      }
+      if (p.paidOn) {
+        const y = new Date(p.paidOn).getFullYear();
+        if (!isNaN(y)) yearsWithData.push(y);
+      }
+    });
+    if (yearsWithData.length > 0) {
+      yearsWithData.sort((a, b) => b - a);
+      return yearsWithData[0];
+    }
+    return currentYear;
+  }, [payments, currentYear]);
 
   // Primary page filter state - Calendar Year (January to December)
   const [selectedBaseYear, setSelectedBaseYear] = useState<number>(currentYear);
+  const [hasUserChangedYear, setHasUserChangedYear] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 'all' or '0' - '11'
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOwnerId, setExpandedOwnerId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [downloadingPaymentId, setDownloadingPaymentId] = useState<string | null>(null);
+
+  // Download single receipt with backend API and client jsPDF fallback
+  const handleDownloadReceipt = async (p: Payment, ownerObj?: (typeof owners)[0]) => {
+    if (p.status && p.status.toLowerCase() === 'pending') {
+      toast('No receipt available – payment is pending.', 'error');
+      return;
+    }
+    const pid = String(p.id);
+    setDownloadingPaymentId(pid);
+    toast('Downloading receipt...', 'info');
+
+    try {
+      // 1. Attempt to fetch receipt from server
+      const receipt = await ReceiptService.getReceiptByMaintenance(Number(p.id));
+      await ReceiptService.downloadReceiptPdf(receipt.id);
+      toast('Receipt downloaded successfully.', 'success');
+    } catch {
+      // 2. Fallback to client-side jsPDF generator
+      const targetOwner = ownerObj || owners.find((o) => String(o.id) === String(p.ownerId));
+      if (targetOwner) {
+        try {
+          generateReceiptPDF(p, targetOwner, societyName || 'Co-operative Housing Society');
+          toast('Receipt generated & downloaded.', 'success');
+        } catch {
+          toast('Failed to download receipt.', 'error');
+        }
+      } else {
+        toast('Receipt not found on server.', 'error');
+      }
+    } finally {
+      setDownloadingPaymentId(null);
+    }
+  };
+
+  // Download all receipts for an owner
+  const handleDownloadAllReceipts = async (paymentsList: Payment[], ownerObj: (typeof owners)[0]) => {
+    if (paymentsList.length === 0) return;
+    toast(`Downloading ${paymentsList.length} receipt(s)...`, 'info');
+    for (let i = 0; i < paymentsList.length; i++) {
+      const p = paymentsList[i];
+      await handleDownloadReceipt(p, ownerObj);
+      if (i < paymentsList.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+    }
+  };
+
+  // If initial load finishes and payments exist in a previous year (e.g. 2025), default to that year
+  useEffect(() => {
+    if (!hasUserChangedYear && recordedDataYear && recordedDataYear !== currentYear) {
+      setSelectedBaseYear(recordedDataYear);
+    }
+  }, [recordedDataYear, hasUserChangedYear, currentYear]);
 
   // Member Payment Ledger Table State
   const [ledgerRangeMode, setLedgerRangeMode] = useState<'yearly' | 'monthly'>('yearly');
@@ -95,6 +250,7 @@ export default function Reports() {
   const [expenseMonth, setExpenseMonth] = useState<string>(String(currentMonthIdx));
   const [expenseSearch, setExpenseSearch] = useState<string>('');
   const [expenseCategory, setExpenseCategory] = useState<string>('All');
+  const [expenseSortOrder, setExpenseSortOrder] = useState<'desc' | 'asc'>('desc');
 
   // Print & Export Modal State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -124,7 +280,8 @@ export default function Reports() {
 
   // Helper: check if a payment overlaps with interval
   const isPaymentInInterval = (payment: Payment, start: Date, end: Date) => {
-    if (payment.status !== 'paid') return false;
+    // If explicitly marked pending, do not include
+    if (payment.status && payment.status.toLowerCase() === 'pending') return false;
 
     // 1. If explicit fromDate / toDate exist (yyyy-MM-dd format)
     if (payment.fromDate) {
@@ -150,7 +307,7 @@ export default function Reports() {
 
     // 2. Fallback to month string parsing (e.g. "January 2025" or "Apr 2025 - Jun 2025")
     if (payment.month && payment.month !== 'Maintenance') {
-      const parts = payment.month.split(' - ');
+      const parts = payment.month.split(/\s*[-–]\s*/);
       const pStart = startOfMonth(new Date(parts[0]));
       const pEnd = parts.length === 2 ? endOfMonth(new Date(parts[1])) : endOfMonth(pStart);
       if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
@@ -159,7 +316,7 @@ export default function Reports() {
     }
 
     // 3. Fallback to covered months
-    const owner = owners.find((o) => o.id === payment.ownerId);
+    const owner = owners.find((o) => String(o.id) === String(payment.ownerId));
     const isShop = isShopUnit(owner?.flat);
     const standardRate = isShop ? 200 : (owner?.monthlyAmount || 500);
     const covered = getCoveredMonthsForPayment(payment, standardRate);
@@ -240,9 +397,9 @@ export default function Reports() {
 
   // Table 1: Member Ledger Interval & Payments
   const ledgerInterval = useMemo(() => {
-    const monthVal = ledgerRangeMode === 'yearly' ? 'all' : ledgerMonth;
+    const monthVal = selectedMonth !== 'all' ? selectedMonth : (ledgerRangeMode === 'yearly' ? 'all' : ledgerMonth);
     return getPeriodInterval(selectedBaseYear, monthVal);
-  }, [selectedBaseYear, ledgerRangeMode, ledgerMonth]);
+  }, [selectedBaseYear, selectedMonth, ledgerRangeMode, ledgerMonth]);
 
   const ledgerPayments = useMemo(() => {
     return payments.filter((p) => isPaymentInInterval(p, ledgerInterval.start, ledgerInterval.end));
@@ -252,7 +409,7 @@ export default function Reports() {
   const memberLedger = useMemo(() => {
     return owners
       .map((owner) => {
-        const ownerPayments = ledgerPayments.filter((p) => p.ownerId === owner.id);
+        const ownerPayments = ledgerPayments.filter((p) => String(p.ownerId) === String(owner.id));
         const totalPaid = ownerPayments.reduce((acc, p) => acc + p.amount, 0);
 
         const monthsCovered = ownerPayments
@@ -287,9 +444,9 @@ export default function Reports() {
 
   // Table 2: Expense Table Interval & Filtered List
   const expenseTableInterval = useMemo(() => {
-    const monthVal = expenseRangeMode === 'yearly' ? 'all' : expenseMonth;
+    const monthVal = selectedMonth !== 'all' ? selectedMonth : (expenseRangeMode === 'yearly' ? 'all' : expenseMonth);
     return getPeriodInterval(selectedBaseYear, monthVal);
-  }, [selectedBaseYear, expenseRangeMode, expenseMonth]);
+  }, [selectedBaseYear, selectedMonth, expenseRangeMode, expenseMonth]);
 
   const filteredTableExpenses = useMemo(() => {
     const list = expenses.filter((e) => isExpenseInInterval(e, expenseTableInterval.start, expenseTableInterval.end));
@@ -304,8 +461,12 @@ export default function Reports() {
           (e.note && e.note.toLowerCase().includes(s));
         return matchesCat && matchesSearch;
       })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [expenses, expenseTableInterval, expenseCategory, expenseSearch]);
+      .sort((a, b) => {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return expenseSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      });
+  }, [expenses, expenseTableInterval, expenseCategory, expenseSearch, expenseSortOrder]);
 
   const tableExpenseTotal = useMemo(() => {
     return filteredTableExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -360,7 +521,7 @@ export default function Reports() {
   const printMemberLedger = useMemo(() => {
     return owners
       .map((owner) => {
-        const oPayments = printPayments.filter((p) => p.ownerId === owner.id);
+        const oPayments = printPayments.filter((p) => String(p.ownerId) === String(owner.id));
         const totalPaid = oPayments.reduce((acc, p) => acc + p.amount, 0);
 
         const monthsCovered = oPayments
@@ -505,7 +666,10 @@ export default function Reports() {
             {/* Year Dropdown */}
             <select
               value={selectedBaseYear}
-              onChange={(e) => setSelectedBaseYear(Number(e.target.value))}
+              onChange={(e) => {
+                setHasUserChangedYear(true);
+                setSelectedBaseYear(Number(e.target.value));
+              }}
               className="input-field cursor-pointer flex-1 sm:w-auto"
               style={{
                 padding: '7px 10px',
@@ -772,9 +936,12 @@ export default function Reports() {
             >
               <button
                 type="button"
-                onClick={() => setLedgerRangeMode('yearly')}
+                onClick={() => {
+                  setLedgerRangeMode('yearly');
+                  setSelectedMonth('all');
+                }}
                 className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                  ledgerRangeMode === 'yearly'
+                  (selectedMonth === 'all' && ledgerRangeMode === 'yearly')
                     ? 'bg-orange-500 text-white shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200'
                 }`}
@@ -783,9 +950,12 @@ export default function Reports() {
               </button>
               <button
                 type="button"
-                onClick={() => setLedgerRangeMode('monthly')}
+                onClick={() => {
+                  setLedgerRangeMode('monthly');
+                  if (selectedMonth === 'all') setSelectedMonth(ledgerMonth);
+                }}
                 className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                  ledgerRangeMode === 'monthly'
+                  (selectedMonth !== 'all' || ledgerRangeMode === 'monthly')
                     ? 'bg-orange-500 text-white shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200'
                 }`}
@@ -795,10 +965,13 @@ export default function Reports() {
             </div>
 
             {/* Month selector if Monthly */}
-            {ledgerRangeMode === 'monthly' && (
+            {(selectedMonth !== 'all' || ledgerRangeMode === 'monthly') && (
               <select
-                value={ledgerMonth}
-                onChange={(e) => setLedgerMonth(e.target.value)}
+                value={selectedMonth !== 'all' ? selectedMonth : ledgerMonth}
+                onChange={(e) => {
+                  setLedgerMonth(e.target.value);
+                  setSelectedMonth(e.target.value);
+                }}
                 className="input-field text-xs font-semibold cursor-pointer shrink-0 !w-auto"
                 style={{
                   height: '36px',
@@ -834,20 +1007,20 @@ export default function Reports() {
         </div>
 
         <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '650px' }}>
+          <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '700px' }}>
             <thead>
               <tr
                 style={{
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
                   borderBottom: `1px solid ${borderColor}`,
                   color: textSecondary,
                 }}
               >
-                <th className="py-3 px-4 font-semibold" style={{ width: '16%' }}>{t('flat')}</th>
-                <th className="py-3 px-4 font-semibold" style={{ width: '32%' }}>{t('owner')}</th>
-                <th className="py-3 px-4 font-semibold" style={{ width: '26%' }}>Months / Period Covered</th>
-                <th className="py-3 px-4 font-semibold text-right" style={{ width: '13%' }}>{t('totalPaid')}</th>
-                <th className="py-3 px-4 font-semibold text-center" style={{ width: '13%' }}>{t('receipt')}</th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '13%' }}>{t('flat')}</th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '27%' }}>{t('owner')}</th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '25%' }}>Period Covered</th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-right" style={{ width: '15%' }}>{t('totalPaid')}</th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-center" style={{ width: '20%' }}>{t('receipt')}</th>
               </tr>
             </thead>
             <tbody>
@@ -872,50 +1045,109 @@ export default function Reports() {
                         }}
                         className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                       >
-                        <td className="py-3 px-4 font-bold" style={{ color: '#f97316' }}>
+                        <td className="py-3.5 px-4">
                           <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap tracking-wide"
                             style={{
-                              backgroundColor: isDark ? 'rgba(249,115,22,0.14)' : 'rgba(249,115,22,0.08)',
-                              color: '#f97316',
-                              border: '1px solid rgba(249,115,22,0.25)',
+                              backgroundColor: isShop
+                                ? (isDark ? 'rgba(249,115,22,0.15)' : 'rgba(249,115,22,0.09)')
+                                : (isDark ? 'rgba(56,189,248,0.14)' : 'rgba(14,165,233,0.08)'),
+                              color: isShop ? '#f97316' : (isDark ? '#38bdf8' : '#0284c7'),
+                              border: isShop
+                                ? (isDark ? '1px solid rgba(249,115,22,0.3)' : '1px solid rgba(249,115,22,0.25)')
+                                : (isDark ? '1px solid rgba(56,189,248,0.28)' : '1px solid rgba(14,165,233,0.22)'),
                             }}
                           >
-                            {isShop ? <Store size={11} /> : <Building2 size={11} />}
-                            {owner.flat}
+                            {isShop ? <Store size={12} className="shrink-0" /> : <Building2 size={12} className="shrink-0" />}
+                            <span>{owner.flat}</span>
                           </span>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold" style={{ color: textPrimary }}>
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-[13.5px] leading-snug" style={{ color: textPrimary }}>
                             {owner.name}
                           </div>
                           {owner.nameMr && (
-                            <div className="text-xs" style={{ color: textSecondary }}>
+                            <div className="text-[11.5px] mt-0.5 font-normal opacity-75" style={{ color: textSecondary }}>
                               {owner.nameMr}
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-xs font-medium" style={{ color: textPrimary }}>
-                          <span className="line-clamp-1" title={monthsCovered}>
-                            {monthsCovered}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-bold text-right text-green-500 text-sm">
-                          ₹{totalPaid.toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedOwnerId(isExpanded ? null : owner.id)}
-                            className="text-xs font-semibold px-2.5 py-1 rounded-md border flex items-center gap-1 mx-auto transition-colors hover:border-orange-500/50 hover:text-orange-500 cursor-pointer"
+                        <td className="py-3.5 px-4">
+                          <div
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium max-w-full"
                             style={{
-                              borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb',
-                              color: textSecondary,
+                              backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : '#e2e8f0'}`,
+                              color: textPrimary,
+                            }}
+                            title={monthsCovered}
+                          >
+                            <Calendar size={12} style={{ color: '#f97316', flexShrink: 0 }} />
+                            <span className="truncate">
+                              {monthsCovered.replace(/\s*[-–]\s*/g, ' – ') || 'Maintenance'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <span
+                            className="inline-flex items-center px-2.5 py-1 rounded-md font-bold text-sm tracking-tight"
+                            style={{
+                              backgroundColor: isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.08)',
+                              color: isDark ? '#4ade80' : '#15803d',
+                              border: isDark ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(34,197,94,0.2)',
+                              fontVariantNumeric: 'tabular-nums',
                             }}
                           >
-                            <span>{oPayments.length} Receipt(s)</span>
-                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                          </button>
+                            ₹{totalPaid.toLocaleString('en-IN')}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <div
+                            className="inline-flex items-center justify-center rounded-lg border shadow-sm divide-x overflow-hidden whitespace-nowrap"
+                            style={{
+                              borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#e2e8f0',
+                              backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+                            }}
+                          >
+                            {/* Expand/Collapse Toggle Button */}
+                            <button
+                              type="button"
+                              onClick={() => setExpandedOwnerId(isExpanded ? null : owner.id)}
+                              className="px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer hover:bg-orange-500/10 hover:text-orange-500"
+                              style={{ color: isExpanded ? '#f97316' : textPrimary }}
+                              title={isExpanded ? "Collapse receipts" : "View receipt breakdown"}
+                            >
+                              <Receipt size={13} style={{ color: isExpanded ? '#f97316' : '#919eab' }} />
+                              <span>{oPayments.length} {oPayments.length === 1 ? 'Receipt' : 'Receipts'}</span>
+                              {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            </button>
+
+                            {/* Direct Download Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (oPayments.length === 1) {
+                                  handleDownloadReceipt(oPayments[0], owner);
+                                } else {
+                                  handleDownloadAllReceipts(oPayments, owner);
+                                }
+                              }}
+                              disabled={downloadingPaymentId !== null}
+                              className="px-2.5 py-1.5 text-xs font-semibold flex items-center justify-center transition-all cursor-pointer hover:bg-orange-500 hover:text-white disabled:opacity-50"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(249,115,22,0.12)' : 'rgba(249,115,22,0.08)',
+                                color: '#f97316',
+                              }}
+                              title={oPayments.length === 1 ? "Download Receipt PDF" : `Download all ${oPayments.length} receipts`}
+                            >
+                              {downloadingPaymentId && oPayments.some((p) => String(p.id) === downloadingPaymentId) ? (
+                                <Loader2 size={13} className="animate-spin" />
+                              ) : (
+                                <Download size={13} />
+                              )}
+                            </button>
+                          </div>
                         </td>
                       </tr>
 
@@ -924,38 +1156,124 @@ export default function Reports() {
                         <tr
                           key={`expanded-${owner.id}`}
                           style={{
-                            backgroundColor: isDark ? 'rgba(0,0,0,0.25)' : '#f9fafb',
+                            backgroundColor: isDark ? 'rgba(249,115,22,0.025)' : '#fdfaf8',
                             borderBottom: `1px solid ${borderColor}`,
                           }}
                         >
-                          <td colSpan={5} className="p-4">
-                            <div className="pl-4 border-l-2 border-orange-500 space-y-2">
-                              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: textSecondary }}>
-                                Detailed Receipts for {owner.name} ({owner.flat}):
-                              </p>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {oPayments.map((p) => (
-                                  <div
-                                    key={p.id}
-                                    className="p-2.5 rounded-lg border text-xs"
+                          <td colSpan={5} className="p-4 sm:p-5">
+                            <div className="pl-4 border-l-4 border-orange-500 space-y-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Receipt size={15} className="text-orange-500" />
+                                  <span className="text-xs font-extrabold uppercase tracking-wider text-orange-500">
+                                    Receipt Breakdown:
+                                  </span>
+                                  <span className="text-xs font-bold" style={{ color: textPrimary }}>
+                                    {owner.name} ({owner.flat})
+                                  </span>
+                                </div>
+                                {oPayments.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadAllReceipts(oPayments, owner)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer hover:shadow-sm hover:brightness-105"
                                     style={{
-                                      backgroundColor: cardBg,
-                                      borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
+                                      borderColor: 'rgba(249,115,22,0.4)',
+                                      backgroundColor: isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed',
+                                      color: '#f97316',
                                     }}
+                                    title="Download all receipts for this member"
                                   >
-                                    <div className="flex items-center justify-between font-bold">
-                                      <span style={{ color: '#f97316' }}>{p.receiptNumber || `RCP-${p.id}`}</span>
-                                      <span className="text-green-500 font-bold">₹{p.amount.toLocaleString('en-IN')}</span>
+                                    <Download size={13} />
+                                    <span>Download All Receipts ({oPayments.length})</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {oPayments.map((p) => {
+                                  const isDownloading = downloadingPaymentId === String(p.id);
+                                  return (
+                                    <div
+                                      key={p.id}
+                                      className="p-3.5 rounded-xl border text-xs flex flex-col justify-between transition-all shadow-sm hover:shadow-md"
+                                      style={{
+                                        backgroundColor: cardBg,
+                                        borderColor: isDark ? 'rgba(255,255,255,0.09)' : '#e2e8f0',
+                                      }}
+                                    >
+                                      <div>
+                                        <div className="flex items-center justify-between font-bold">
+                                          <span
+                                            className="px-2 py-0.5 rounded font-mono font-bold text-xs"
+                                            style={{
+                                              backgroundColor: isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed',
+                                              color: '#f97316',
+                                              border: '1px solid rgba(249,115,22,0.25)',
+                                            }}
+                                          >
+                                            {p.receiptNumber || `RCP-${p.id}`}
+                                          </span>
+                                          <span className="font-extrabold text-sm" style={{ color: isDark ? '#4ade80' : '#15803d' }}>
+                                            ₹{p.amount.toLocaleString('en-IN')}
+                                          </span>
+                                        </div>
+
+                                        <div className="mt-2.5 flex items-center gap-1.5 font-semibold" style={{ color: textPrimary }}>
+                                          <Calendar size={13} style={{ color: '#f97316', flexShrink: 0 }} />
+                                          <span>{p.month}</span>
+                                        </div>
+
+                                        <div className="mt-1.5 flex items-center justify-between text-[11px]" style={{ color: textSecondary }}>
+                                          <span>Date: {p.paidOn ? format(new Date(p.paidOn), 'dd MMM yyyy') : 'Recorded'}</span>
+                                          {p.transactionId && (
+                                            <span className="font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }}>
+                                              UTR: {p.transactionId}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div
+                                        className="mt-3 pt-2.5 border-t flex items-center justify-between"
+                                        style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}
+                                      >
+                                        <span
+                                          className="text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                                          style={{
+                                            backgroundColor: isDark ? 'rgba(34,197,94,0.15)' : '#dcfce7',
+                                            color: '#16a34a',
+                                          }}
+                                        >
+                                          {p.status || 'PAID'}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDownloadReceipt(p, owner)}
+                                          disabled={isDownloading}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all shadow-sm hover:brightness-105 active:scale-95 disabled:opacity-50"
+                                          style={{
+                                            backgroundColor: '#f97316',
+                                            color: '#ffffff',
+                                          }}
+                                          title="Download Receipt PDF"
+                                        >
+                                          {isDownloading ? (
+                                            <>
+                                              <Loader2 size={12} className="animate-spin" />
+                                              <span>Downloading...</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Download size={12} />
+                                              <span>Download Receipt</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
                                     </div>
-                                    <div className="mt-1 font-medium" style={{ color: textPrimary }}>
-                                      {p.month}
-                                    </div>
-                                    <div className="mt-1 flex items-center justify-between text-[11px]" style={{ color: textSecondary }}>
-                                      <span>Date: {p.paidOn ? format(new Date(p.paidOn), 'dd MMM yyyy') : 'Recorded'}</span>
-                                      {p.transactionId && <span className="font-mono">UTR: {p.transactionId}</span>}
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           </td>
@@ -970,19 +1288,51 @@ export default function Reports() {
               <tfoot>
                 <tr
                   style={{
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb',
-                    borderTop: `2px solid ${borderColor}`,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc',
+                    borderTop: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
                     fontWeight: 800,
                   }}
                 >
-                  <td colSpan={3} className="py-3 px-4 font-bold" style={{ color: textPrimary }}>
-                    Total: {filteredMembers.length} Members Paid ({ledgerRangeMode === 'yearly' ? 'Whole Year' : 'Selected Month'})
+                  <td colSpan={3} className="py-3.5 px-4 font-bold text-sm" style={{ color: textPrimary }}>
+                    <div className="flex items-center gap-2">
+                      <span>Total:</span>
+                      <span
+                        className="px-2 py-0.5 rounded text-xs font-extrabold"
+                        style={{
+                          backgroundColor: isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed',
+                          color: '#f97316',
+                        }}
+                      >
+                        {filteredMembers.length} Members Paid
+                      </span>
+                      <span className="text-xs font-medium" style={{ color: textSecondary }}>
+                        ({ledgerRangeMode === 'yearly' ? 'Whole Year' : 'Selected Month'})
+                      </span>
+                    </div>
                   </td>
-                  <td className="py-3 px-4 text-right text-green-500 font-bold text-sm">
-                    ₹{ledgerTotalCollected.toLocaleString('en-IN')}
+                  <td className="py-3.5 px-4 text-right">
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 rounded-md font-extrabold text-sm"
+                      style={{
+                        backgroundColor: isDark ? 'rgba(34,197,94,0.15)' : '#dcfce7',
+                        color: isDark ? '#4ade80' : '#15803d',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      ₹{ledgerTotalCollected.toLocaleString('en-IN')}
+                    </span>
                   </td>
-                  <td className="py-3 px-4 text-center text-xs font-semibold" style={{ color: textSecondary }}>
-                    {filteredMembers.reduce((acc, m) => acc + m.payments.length, 0)} Total Receipts
+                  <td className="py-3.5 px-4 text-center">
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold"
+                      style={{
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+                        color: textSecondary,
+                      }}
+                    >
+                      <Receipt size={12} className="text-orange-500" />
+                      <span>{filteredMembers.reduce((acc, m) => acc + m.payments.length, 0)} Total Receipts</span>
+                    </span>
                   </td>
                 </tr>
               </tfoot>
@@ -1031,9 +1381,12 @@ export default function Reports() {
             >
               <button
                 type="button"
-                onClick={() => setExpenseRangeMode('yearly')}
+                onClick={() => {
+                  setExpenseRangeMode('yearly');
+                  setSelectedMonth('all');
+                }}
                 className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                  expenseRangeMode === 'yearly'
+                  (selectedMonth === 'all' && expenseRangeMode === 'yearly')
                     ? 'bg-orange-500 text-white shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200'
                 }`}
@@ -1042,9 +1395,12 @@ export default function Reports() {
               </button>
               <button
                 type="button"
-                onClick={() => setExpenseRangeMode('monthly')}
+                onClick={() => {
+                  setExpenseRangeMode('monthly');
+                  if (selectedMonth === 'all') setSelectedMonth(expenseMonth);
+                }}
                 className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                  expenseRangeMode === 'monthly'
+                  (selectedMonth !== 'all' || expenseRangeMode === 'monthly')
                     ? 'bg-orange-500 text-white shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200'
                 }`}
@@ -1054,10 +1410,13 @@ export default function Reports() {
             </div>
 
             {/* Month selector if Monthly */}
-            {expenseRangeMode === 'monthly' && (
+            {(selectedMonth !== 'all' || expenseRangeMode === 'monthly') && (
               <select
-                value={expenseMonth}
-                onChange={(e) => setExpenseMonth(e.target.value)}
+                value={selectedMonth !== 'all' ? selectedMonth : expenseMonth}
+                onChange={(e) => {
+                  setExpenseMonth(e.target.value);
+                  setSelectedMonth(e.target.value);
+                }}
                 className="input-field text-xs font-semibold cursor-pointer shrink-0 !w-auto"
                 style={{
                   height: '36px',
@@ -1112,20 +1471,45 @@ export default function Reports() {
         </div>
 
         <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '650px' }}>
+          <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '700px' }}>
             <thead>
               <tr
                 style={{
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f9fafb',
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
                   borderBottom: `1px solid ${borderColor}`,
                   color: textSecondary,
                 }}
               >
-                <th className="py-3 px-4 font-semibold">Date</th>
-                <th className="py-3 px-4 font-semibold">Title / Description</th>
-                <th className="py-3 px-4 font-semibold">Category</th>
-                <th className="py-3 px-4 font-semibold">Paid To</th>
-                <th className="py-3 px-4 font-semibold text-right">Amount</th>
+                <th
+                  onClick={() => setExpenseSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+                  className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider cursor-pointer select-none group transition-colors hover:text-orange-500"
+                  style={{ width: '16%' }}
+                  title={`Date sorted ${expenseSortOrder === 'desc' ? 'Newest to Oldest (Descending)' : 'Oldest to Newest (Ascending)'}. Click to toggle.`}
+                >
+                  <div className="inline-flex items-center gap-1.5">
+                    <span>Date</span>
+                    <span
+                      className="p-1 rounded transition-colors"
+                      style={{
+                        backgroundColor: isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed',
+                        color: '#f97316',
+                      }}
+                    >
+                      {expenseSortOrder === 'desc' ? (
+                        <ArrowDown size={13} />
+                      ) : (
+                        <ArrowUp size={13} />
+                      )}
+                    </span>
+                    <span className="text-[10px] font-normal lowercase tracking-normal text-zinc-400">
+                      ({expenseSortOrder === 'desc' ? 'desc' : 'asc'})
+                    </span>
+                  </div>
+                </th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '32%' }}>Title / Description</th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '23%' }}>Category</th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '15%' }}>Paid To</th>
+                <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-right" style={{ width: '15%' }}>Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -1138,61 +1522,111 @@ export default function Reports() {
                   </td>
                 </tr>
               ) : (
-                filteredTableExpenses.map((exp) => (
-                  <tr
-                    key={exp.id}
-                    style={{
-                      borderBottom: `1px solid ${borderColor}`,
-                    }}
-                    className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                  >
-                    <td className="py-3 px-4 text-xs font-mono whitespace-nowrap" style={{ color: textSecondary }}>
-                      {exp.date ? format(parseISO(exp.date), 'dd/MM/yyyy') : '—'}
-                    </td>
-                    <td className="py-3 px-4 font-semibold" style={{ color: textPrimary }}>
-                      <div>{exp.title}</div>
-                      {exp.note && (
-                        <div className="text-xs font-normal mt-0.5" style={{ color: textSecondary }}>
-                          {exp.note}
+                filteredTableExpenses.map((exp) => {
+                  const badgeStyle = getCategoryBadgeStyle(exp.category, isDark);
+                  return (
+                    <tr
+                      key={exp.id}
+                      style={{
+                        borderBottom: `1px solid ${borderColor}`,
+                      }}
+                      className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <td className="py-3.5 px-4">
+                        <div
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap"
+                          style={{
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : '#e2e8f0'}`,
+                            color: textPrimary,
+                          }}
+                        >
+                          <Calendar size={12} style={{ color: '#f97316', flexShrink: 0 }} />
+                          <span>{exp.date ? format(parseISO(exp.date), 'dd MMM yyyy') : '—'}</span>
                         </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold"
-                        style={{
-                          backgroundColor: 'rgba(249, 115, 22, 0.14)',
-                          color: '#f97316',
-                          border: '1px solid rgba(249, 115, 22, 0.25)',
-                        }}
-                      >
-                        {exp.category}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-xs" style={{ color: textSecondary }}>
-                      {exp.paidTo || '—'}
-                    </td>
-                    <td className="py-3 px-4 font-bold text-right text-red-500 font-mono text-sm">
-                      ₹{exp.amount.toLocaleString('en-IN')}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-[13.5px] leading-snug" style={{ color: textPrimary }}>
+                          {exp.title}
+                        </div>
+                        {exp.note && (
+                          <div className="text-[11.5px] mt-0.5 font-normal opacity-75" style={{ color: textSecondary }}>
+                            {exp.note}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap tracking-wide"
+                          style={{
+                            backgroundColor: badgeStyle.bg,
+                            color: badgeStyle.color,
+                            border: badgeStyle.border,
+                          }}
+                        >
+                          {exp.category}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="text-xs font-medium" style={{ color: textSecondary }}>
+                          {exp.paidTo || '—'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 rounded-md font-bold text-sm tracking-tight"
+                          style={{
+                            backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)',
+                            color: isDark ? '#f87171' : '#dc2626',
+                            border: isDark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          ₹{exp.amount.toLocaleString('en-IN')}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
             {filteredTableExpenses.length > 0 && (
               <tfoot>
                 <tr
                   style={{
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb',
-                    borderTop: `2px solid ${borderColor}`,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc',
+                    borderTop: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
                     fontWeight: 800,
                   }}
                 >
-                  <td colSpan={4} className="py-3 px-4 font-bold" style={{ color: textPrimary }}>
-                    Total: {filteredTableExpenses.length} Expense Vouchers ({expenseRangeMode === 'yearly' ? 'Whole Year' : 'Selected Month'})
+                  <td colSpan={4} className="py-3.5 px-4 font-bold text-sm" style={{ color: textPrimary }}>
+                    <div className="flex items-center gap-2">
+                      <span>Total:</span>
+                      <span
+                        className="px-2 py-0.5 rounded text-xs font-extrabold"
+                        style={{
+                          backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2',
+                          color: isDark ? '#f87171' : '#dc2626',
+                        }}
+                      >
+                        {filteredTableExpenses.length} Expense Vouchers
+                      </span>
+                      <span className="text-xs font-medium" style={{ color: textSecondary }}>
+                        ({expenseRangeMode === 'yearly' ? 'Whole Year' : 'Selected Month'})
+                      </span>
+                    </div>
                   </td>
-                  <td className="py-3 px-4 text-right text-red-500 font-bold text-sm font-mono">
-                    ₹{tableExpenseTotal.toLocaleString('en-IN')}
+                  <td className="py-3.5 px-4 text-right">
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 rounded-md font-extrabold text-sm"
+                      style={{
+                        backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2',
+                        color: isDark ? '#f87171' : '#dc2626',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      ₹{tableExpenseTotal.toLocaleString('en-IN')}
+                    </span>
                   </td>
                 </tr>
               </tfoot>

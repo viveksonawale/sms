@@ -197,14 +197,15 @@ const mapMaintenanceToFrontend = (m: any): Payment => {
       }
     }
   }
+  const isPaid = !m.status || String(m.status).toUpperCase() === 'PAID' || String(m.status).toLowerCase() === 'paid';
   return {
     id: String(m.id),
     ownerId: String(m.ownerId),
     month: monthStr,
     amount: Number(m.amount),
     paidOn: m.paymentDate ? m.paymentDate + 'T12:00:00Z' : '',
-    receiptNumber: m.status === 'PAID' ? `RCP-${String(m.id).padStart(4, '0')}` : '',
-    status: m.status === 'PAID' ? 'paid' : 'pending',
+    receiptNumber: isPaid ? `RCP-${String(m.id).padStart(4, '0')}` : '',
+    status: isPaid ? 'paid' : 'pending',
     transactionId: m.transactionId || undefined,
     fromDate: m.fromDate || undefined,
     toDate: m.toDate || undefined,
@@ -250,7 +251,12 @@ export const useStore = create<StoreState>()(
 
       fetchPayments: async () => {
         try {
-          const owners = get().owners;
+          let owners = get().owners;
+          if (!owners || owners.length === 0) {
+            const ownersData = await OwnerService.getAllOwners();
+            owners = ownersData.map(mapOwnerToFrontend);
+            set({ owners });
+          }
           const allMaintenances = await Promise.all(
             owners.map((o) => MaintenanceService.getByOwner(Number(o.id)).catch(() => []))
           );

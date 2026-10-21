@@ -64,9 +64,13 @@ export const generateReceiptPDF = (
   const col2 = pageW / 2 + 10;
 
   // ================= DETAILS =================
+  const paidDateStr = payment.paidOn && !isNaN(new Date(payment.paidOn).getTime())
+    ? format(new Date(payment.paidOn), 'dd MMM yyyy')
+    : format(new Date(), 'dd MMM yyyy');
+
   // Row 1
-  drawField('Receipt Number', String(payment.receiptNumber), col1, y);
-  drawField('Date', format(new Date(payment.paidOn), 'dd MMM yyyy'), col2, y);
+  drawField('Receipt Number', String(payment.receiptNumber || `RCP-${payment.id}`), col1, y);
+  drawField('Date', paidDateStr, col2, y);
 
   y += 14;
 
@@ -77,8 +81,8 @@ export const generateReceiptPDF = (
   y += 14;
 
   // Row 3
-  drawField('For Month', payment.month, col1, y);
-  drawField('Contact', `+${owner.phone}`, col2, y);
+  drawField('For Month', payment.month || 'Maintenance', col1, y);
+  drawField('Contact', owner.phone ? `+${owner.phone}` : 'N/A', col2, y);
 
   y += 14;
 
@@ -160,5 +164,5 @@ export const generateReceiptPDF = (
   );
 
   // ================= SAVE =================
-  doc.save(`Receipt_${payment.receiptNumber}.pdf`);
+  doc.save(`Receipt_${payment.receiptNumber || payment.id}.pdf`);
 };

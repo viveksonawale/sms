@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { Plus, Receipt, Search, Calendar, Edit2, Trash2, IndianRupee } from 'lucide-react';
+import { Plus, Receipt, Search, Calendar, Edit2, Trash2, IndianRupee, ArrowUp, ArrowDown } from 'lucide-react';
 import { format, parseISO, subMonths } from 'date-fns';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
@@ -18,6 +18,65 @@ const CATEGORIES = [
   "Festival & Events",
   "Other"
 ];
+
+const getCategoryBadgeStyle = (category: string, isDark: boolean) => {
+  switch (category) {
+    case 'Maintenance & Repair':
+      return {
+        bg: isDark ? 'rgba(249,115,22,0.15)' : 'rgba(249,115,22,0.09)',
+        color: '#f97316',
+        border: isDark ? '1px solid rgba(249,115,22,0.3)' : '1px solid rgba(249,115,22,0.25)',
+      };
+    case 'Security':
+      return {
+        bg: isDark ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.09)',
+        color: isDark ? '#c084fc' : '#9333ea',
+        border: isDark ? '1px solid rgba(168,85,247,0.3)' : '1px solid rgba(168,85,247,0.25)',
+      };
+    case 'Electricity':
+      return {
+        bg: isDark ? 'rgba(234,179,8,0.15)' : 'rgba(234,179,8,0.1)',
+        color: isDark ? '#facc15' : '#ca8a04',
+        border: isDark ? '1px solid rgba(234,179,8,0.3)' : '1px solid rgba(234,179,8,0.25)',
+      };
+    case 'Water':
+      return {
+        bg: isDark ? 'rgba(56,189,248,0.15)' : 'rgba(14,165,233,0.09)',
+        color: isDark ? '#38bdf8' : '#0284c7',
+        border: isDark ? '1px solid rgba(56,189,248,0.3)' : '1px solid rgba(14,165,233,0.25)',
+      };
+    case 'Cleaning & Housekeeping':
+      return {
+        bg: isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.09)',
+        color: isDark ? '#4ade80' : '#16a34a',
+        border: isDark ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(34,197,94,0.25)',
+      };
+    case 'Festival & Events':
+      return {
+        bg: isDark ? 'rgba(244,63,94,0.15)' : 'rgba(244,63,94,0.09)',
+        color: isDark ? '#fb7185' : '#e11d48',
+        border: isDark ? '1px solid rgba(244,63,94,0.3)' : '1px solid rgba(244,63,94,0.25)',
+      };
+    case 'Garden & Landscaping':
+      return {
+        bg: isDark ? 'rgba(20,184,166,0.15)' : 'rgba(20,184,166,0.09)',
+        color: isDark ? '#2dd4bf' : '#0d9488',
+        border: isDark ? '1px solid rgba(20,184,166,0.3)' : '1px solid rgba(20,184,166,0.25)',
+      };
+    case 'Administrative':
+      return {
+        bg: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.09)',
+        color: isDark ? '#818cf8' : '#4f46e5',
+        border: isDark ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(99,102,241,0.25)',
+      };
+    default:
+      return {
+        bg: isDark ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.1)',
+        color: isDark ? '#cbd5e1' : '#475569',
+        border: isDark ? '1px solid rgba(148,163,184,0.3)' : '1px solid rgba(148,163,184,0.25)',
+      };
+  }
+};
 
 export default function Expenses() {
   const { t } = useTranslation();
@@ -47,6 +106,7 @@ export default function Expenses() {
     };
   });
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [dateSortOrder, setDateSortOrder] = useState<'desc' | 'asc'>('desc');
 
   // Delete State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -68,8 +128,12 @@ export default function Expenses() {
       const matchCategory = selectedCategory === 'All' || e.category === selectedCategory;
       const matchMonth = selectedMonth === 'all' || e.date.startsWith(selectedMonth);
       return matchSearch && matchCategory && matchMonth;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [expenses, search, selectedCategory, selectedMonth]);
+    }).sort((a, b) => {
+      const timeA = a.date ? new Date(a.date).getTime() : 0;
+      const timeB = b.date ? new Date(b.date).getTime() : 0;
+      return dateSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+    });
+  }, [expenses, search, selectedCategory, selectedMonth, dateSortOrder]);
 
   const totalThisMonth = expenses
     .filter(e => e.date.startsWith(format(new Date(), 'yyyy-MM')))
@@ -195,63 +259,200 @@ export default function Expenses() {
         <div className="lg:col-span-2 space-y-4">
           <div className="card" style={{ backgroundColor: cardBg }}>
             <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <table className="w-full text-left border-collapse min-w-[650px]">
+              <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
-                  <tr>
-                    <th style={{ padding: '16px', color: textSecondary, fontSize: '13px', fontWeight: 600, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}` }}>Date</th>
-                    <th style={{ padding: '16px', color: textSecondary, fontSize: '13px', fontWeight: 600, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}` }}>Title</th>
-                    <th style={{ padding: '16px', color: textSecondary, fontSize: '13px', fontWeight: 600, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}` }}>Category</th>
-                    <th style={{ padding: '16px', color: textSecondary, fontSize: '13px', fontWeight: 600, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}` }}>Paid To</th>
-                    <th style={{ padding: '16px', color: textSecondary, fontSize: '13px', fontWeight: 600, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}`, textAlign: 'right' }}>Amount</th>
-                    <th style={{ padding: '16px', color: textSecondary, fontSize: '13px', fontWeight: 600, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}`, width: '80px' }}>{t('actions')}</th>
+                  <tr
+                    style={{
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+                      color: textSecondary,
+                    }}
+                  >
+                    <th
+                      onClick={() => setDateSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+                      className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider cursor-pointer select-none group transition-colors hover:text-orange-500"
+                      style={{ width: '16%' }}
+                      title={`Date sorted ${dateSortOrder === 'desc' ? 'Newest to Oldest (Descending)' : 'Oldest to Newest (Ascending)'}. Click to toggle.`}
+                    >
+                      <div className="inline-flex items-center gap-1.5">
+                        <span>Date</span>
+                        <span
+                          className="p-1 rounded transition-colors"
+                          style={{
+                            backgroundColor: isDark ? 'rgba(249,115,22,0.15)' : '#fff7ed',
+                            color: '#f97316',
+                          }}
+                        >
+                          {dateSortOrder === 'desc' ? (
+                            <ArrowDown size={13} />
+                          ) : (
+                            <ArrowUp size={13} />
+                          )}
+                        </span>
+                        <span className="text-[10px] font-normal lowercase tracking-normal text-zinc-400">
+                          ({dateSortOrder === 'desc' ? 'desc' : 'asc'})
+                        </span>
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '30%' }}>Title / Description</th>
+                    <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '22%' }}>Category</th>
+                    <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider" style={{ width: '15%' }}>Paid To</th>
+                    <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-right" style={{ width: '12%' }}>Amount</th>
+                    <th className="py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-center" style={{ width: '6%' }}>{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedExpenses.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '40px 16px', textAlign: 'center' }}>
-                        <Receipt size={32} style={{ color: textSecondary, margin: '0 auto 12px', opacity: 0.5 }} />
-                        <p style={{ color: textSecondary }}>{t('noExpenses')}</p>
+                      <td colSpan={6} className="py-12 text-center text-sm" style={{ color: textSecondary }}>
+                        <Receipt size={32} className="mx-auto mb-2 opacity-40 text-orange-500" />
+                        <p className="font-semibold text-sm">{t('noExpenses')}</p>
+                        <p className="text-xs opacity-75 mt-0.5">Try adjusting your filters or search term.</p>
                       </td>
                     </tr>
                   ) : (
-                    paginatedExpenses.map((exp) => (
-                      <tr key={exp.id} className="transition-colors" style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}`, cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? '#28343f' : '#f9fafb'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                        <td style={{ padding: '16px', fontSize: '13px', color: textPrimary, whiteSpace: 'nowrap' }}>
-                          {format(parseISO(exp.date), 'dd/MM/yyyy')}
-                        </td>
-                        <td style={{ padding: '16px', fontSize: '14px', fontWeight: 600, color: textPrimary }}>
-                          <span title={exp.note}>{exp.title}</span>
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                          <span style={{
-                            display: 'inline-flex', padding: '4px 8px', borderRadius: '6px',
-                            backgroundColor: 'rgba(249, 115, 22, 0.16)', color: '#f97316',
-                            fontSize: '12px', fontWeight: 700
-                          }}>
-                            {exp.category}
-                          </span>
-                        </td>
-                        <td style={{ padding: '16px', fontSize: '13px', color: textSecondary }}>
-                          {exp.paidTo}
-                        </td>
-                        <td style={{ padding: '16px', fontSize: '14px', fontWeight: 700, color: textPrimary, textAlign: 'right', fontFamily: 'monospace' }}>
-                          ₹{exp.amount.toLocaleString()}
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                          <div className="flex gap-2">
-                            <button onClick={() => navigate(`/expenses/edit/${exp.id}`)} style={{ color: textSecondary }} className="hover:text-blue-500 transition-colors">
-                              <Edit2 size={16} />
-                            </button>
-                            <button onClick={() => confirmDelete(exp.id)} style={{ color: textSecondary }} className="hover:text-red-500 transition-colors">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                    paginatedExpenses.map((exp) => {
+                      const badgeStyle = getCategoryBadgeStyle(exp.category, isDark);
+                      return (
+                        <tr
+                          key={exp.id}
+                          className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                          style={{
+                            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}`,
+                          }}
+                        >
+                          <td className="py-3.5 px-4">
+                            <div
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : '#e2e8f0'}`,
+                                color: textPrimary,
+                              }}
+                            >
+                              <Calendar size={12} style={{ color: '#f97316', flexShrink: 0 }} />
+                              <span>{format(parseISO(exp.date), 'dd MMM yyyy')}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-[13.5px] leading-snug" style={{ color: textPrimary }}>
+                              {exp.title}
+                            </div>
+                            {exp.note && (
+                              <div className="text-[11.5px] mt-0.5 font-normal opacity-75" style={{ color: textSecondary }}>
+                                {exp.note}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold whitespace-nowrap tracking-wide"
+                              style={{
+                                backgroundColor: badgeStyle.bg,
+                                color: badgeStyle.color,
+                                border: badgeStyle.border,
+                              }}
+                            >
+                              {exp.category}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="text-xs font-medium" style={{ color: textSecondary }}>
+                              {exp.paidTo || '—'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <span
+                              className="inline-flex items-center px-2.5 py-1 rounded-md font-bold text-sm tracking-tight"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)',
+                                color: isDark ? '#f87171' : '#dc2626',
+                                border: isDark ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(239, 68, 68, 0.2)',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              ₹{exp.amount.toLocaleString('en-IN')}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="inline-flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/expenses/edit/${exp.id}`)}
+                                className="p-1.5 rounded-lg border transition-all cursor-pointer hover:bg-blue-500 hover:text-white"
+                                style={{
+                                  borderColor: isDark ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.25)',
+                                  backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.06)',
+                                  color: isDark ? '#60a5fa' : '#2563eb',
+                                }}
+                                title="Edit Expense"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => confirmDelete(exp.id)}
+                                className="p-1.5 rounded-lg border transition-all cursor-pointer hover:bg-red-500 hover:text-white"
+                                style={{
+                                  borderColor: isDark ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.25)',
+                                  backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.06)',
+                                  color: isDark ? '#f87171' : '#dc2626',
+                                }}
+                                title="Delete Expense"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
+                {paginatedExpenses.length > 0 && (
+                  <tfoot>
+                    <tr
+                      style={{
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc',
+                        borderTop: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                        fontWeight: 800,
+                      }}
+                    >
+                      <td colSpan={4} className="py-3.5 px-4 font-bold text-sm" style={{ color: textPrimary }}>
+                        <div className="flex items-center gap-2">
+                          <span>Total:</span>
+                          <span
+                            className="px-2 py-0.5 rounded text-xs font-extrabold"
+                            style={{
+                              backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2',
+                              color: isDark ? '#f87171' : '#dc2626',
+                            }}
+                          >
+                            {filteredExpenses.length} Expense{filteredExpenses.length === 1 ? '' : 's'}
+                          </span>
+                          {filteredExpenses.length > ITEMS_PER_PAGE && (
+                            <span className="text-xs font-medium" style={{ color: textSecondary }}>
+                              (Page {currentPage} of {totalPages})
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 rounded-md font-extrabold text-sm"
+                          style={{
+                            backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2',
+                            color: isDark ? '#f87171' : '#dc2626',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          ₹{paginatedExpenses.reduce((sum, e) => sum + e.amount, 0).toLocaleString('en-IN')}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4"></td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
             
