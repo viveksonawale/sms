@@ -1,13 +1,19 @@
 /* =============================================
-   Global styles — Dasher Template Design System
+   Global styles  Dasher Template Design System
    Primary: #f97316 | Font: Public Sans
    ============================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
-*, *::before, *::after { box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   font-family: 'Public Sans', sans-serif;
@@ -26,34 +32,108 @@ html.dark body {
 body.lang-mr {
   font-size: 1.15rem;
 }
-body.lang-mr .text-xs { font-size: 0.85rem; line-height: 1.2rem; }
-body.lang-mr .text-sm { font-size: 1rem; line-height: 1.35rem; }
-body.lang-mr .text-base { font-size: 1.15rem; line-height: 1.6rem; }
-body.lang-mr .text-lg { font-size: 1.25rem; line-height: 1.75rem; }
-body.lang-mr .text-xl { font-size: 1.4rem; line-height: 1.9rem; }
-body.lang-mr .text-2xl { font-size: 1.6rem; line-height: 2rem; }
+
+body.lang-mr .text-xs {
+  font-size: 0.85rem;
+  line-height: 1.2rem;
+}
+
+body.lang-mr .text-sm {
+  font-size: 1rem;
+  line-height: 1.35rem;
+}
+
+body.lang-mr .text-base {
+  font-size: 1.15rem;
+  line-height: 1.6rem;
+}
+
+body.lang-mr .text-lg {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+body.lang-mr .text-xl {
+  font-size: 1.4rem;
+  line-height: 1.9rem;
+}
+
+body.lang-mr .text-2xl {
+  font-size: 1.6rem;
+  line-height: 2rem;
+}
 
 /* ---- Custom scrollbar (Dasher style) ---- */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c4cdd5; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #919eab; }
-html.dark ::-webkit-scrollbar-thumb { background: #454f5b; }
-html.dark ::-webkit-scrollbar-thumb:hover { background: #637381; }
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
 
-/* Mobile scroll improvements */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c4cdd5;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #919eab;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #454f5b;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #637381;
+}
+
+/* Mobile scroll improvements and touch optimizations */
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+button, a, input, select, textarea, .nav-item, .card {
+  touch-action: manipulation;
+}
+
 .mobile-scroll,
 main {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }
 
+/* iOS Safari: Prevent automatic zoom on input focus when font size < 16px */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  .input-field {
+    font-size: 16px !important;
+  }
+
+  /* Guarantee all pages can scroll comfortably past the bottom navigation bar */
+  main {
+    padding-bottom: calc(105px + env(safe-area-inset-bottom, 20px)) !important;
+  }
+}
+
+/* Horizontal touch scroll container for data tables */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
 /* Hide number spinners */
 input[type='number']::-webkit-inner-spin-button,
-input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 
 /* Date & Month picker - Hide default icon and make whole area clickable */
 input[type='date']::-webkit-calendar-picker-indicator,
@@ -68,12 +148,14 @@ input[type='month']::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0;
 }
-input[type='date'], input[type='month'] {
+
+input[type='date'],
+input[type='month'] {
   position: relative;
 }
 
 /* =========================================
-   CARD — Dasher card style
+   CARD  Dasher card style
    ========================================= */
 .card {
   background-color: #ffffff;
@@ -82,6 +164,7 @@ input[type='date'], input[type='month'] {
   box-shadow: 0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
   overflow: hidden;
 }
+
 html.dark .card {
   background-color: #1c252e;
   box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.3), 0 12px 24px -4px rgba(0, 0, 0, 0.2);
@@ -108,12 +191,17 @@ html.dark .card {
   line-height: 1.57;
   white-space: nowrap;
 }
+
 .btn-primary:hover {
   background-color: #ea580c;
   transform: translateY(-1px);
   box-shadow: rgba(249, 115, 22, 0.32) 0px 12px 20px -4px;
 }
-.btn-primary:active { transform: translateY(0); }
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
 .btn-primary:disabled {
   opacity: 0.48;
   cursor: not-allowed;
@@ -135,12 +223,20 @@ html.dark .card {
   gap: 8px;
   transition: all 0.15s ease;
 }
+
 .btn-ghost:hover {
   background-color: rgba(249, 115, 22, 0.08);
   transform: translateY(-1px);
 }
-html.dark .btn-ghost { color: #fdba74; border-color: rgba(253, 186, 116, 0.48); }
-html.dark .btn-ghost:hover { background-color: rgba(253, 186, 116, 0.12); }
+
+html.dark .btn-ghost {
+  color: #fdba74;
+  border-color: rgba(253, 186, 116, 0.48);
+}
+
+html.dark .btn-ghost:hover {
+  background-color: rgba(253, 186, 116, 0.12);
+}
 
 .btn-dark {
   background-color: #1c252e;
@@ -157,12 +253,21 @@ html.dark .btn-ghost:hover { background-color: rgba(253, 186, 116, 0.12); }
   gap: 8px;
   transition: background-color 0.15s ease;
 }
+
 .btn-dark:hover {
   background-color: #232d38;
   transform: translateY(-1px);
 }
-html.dark .btn-dark { background-color: #f9fafb; color: #1c252e; }
-html.dark .btn-dark:hover { background-color: #ffffff; transform: translateY(-1px); }
+
+html.dark .btn-dark {
+  background-color: #f9fafb;
+  color: #1c252e;
+}
+
+html.dark .btn-dark:hover {
+  background-color: #ffffff;
+  transform: translateY(-1px);
+}
 
 .btn-white {
   background-color: #ffffff;
@@ -179,12 +284,19 @@ html.dark .btn-dark:hover { background-color: #ffffff; transform: translateY(-1p
   gap: 6px;
   transition: all 0.15s ease;
 }
+
 .btn-white:hover {
   background-color: #f4f6f8;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
 }
-html.dark .btn-white { background-color: #28343f; border-color: #3d4e5c; color: #c4cdd5; }
+
+html.dark .btn-white {
+  background-color: #28343f;
+  border-color: #3d4e5c;
+  color: #c4cdd5;
+}
+
 html.dark .btn-white:hover {
   background-color: #313d49;
   color: #ffffff;
@@ -208,27 +320,54 @@ html.dark .btn-white:hover {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   outline: none;
 }
-.input-field.pl-10 { padding-left: 2.5rem; }
-.input-field.pl-11 { padding-left: 2.75rem; }
-.input-field.pl-9  { padding-left: 2.25rem; }
-.input-field.pr-10 { padding-right: 2.5rem; }
-.input-field::placeholder { color: #919eab; }
+
+.input-field.pl-10 {
+  padding-left: 2.5rem;
+}
+
+.input-field.pl-11 {
+  padding-left: 2.75rem;
+}
+
+.input-field.pl-9 {
+  padding-left: 2.25rem;
+}
+
+.input-field.pr-10 {
+  padding-right: 2.5rem;
+}
+
+.input-field::placeholder {
+  color: #919eab;
+}
+
 .input-field:focus {
   border-color: #f97316;
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
 }
+
 html.dark .input-field {
   background-color: #28343f;
   color: #ffffff;
   border-color: #3d4e5c;
 }
-html.dark .input-field::placeholder { color: #637381; }
+
+html.dark .input-field::placeholder {
+  color: #637381;
+}
+
 html.dark .input-field:focus {
   border-color: #f97316;
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
 }
-.input-field.error { border-color: #ff5630; }
-.input-field.error:focus { box-shadow: 0 0 0 3px rgba(255, 86, 48, 0.16); }
+
+.input-field.error {
+  border-color: #ff5630;
+}
+
+.input-field.error:focus {
+  box-shadow: 0 0 0 3px rgba(255, 86, 48, 0.16);
+}
 
 .label {
   display: block;
@@ -237,7 +376,10 @@ html.dark .input-field:focus {
   color: #454f5b;
   margin-bottom: 6px;
 }
-html.dark .label { color: #919eab; }
+
+html.dark .label {
+  color: #919eab;
+}
 
 /* =========================================
    BADGE
@@ -253,16 +395,26 @@ html.dark .label { color: #919eab; }
   border: none;
   line-height: 1.5;
 }
+
 .badge-paid {
   background-color: rgba(34, 197, 94, 0.16);
   color: #118d57;
 }
+
 .badge-pending {
   background-color: rgba(255, 171, 0, 0.16);
   color: #b76e00;
 }
-html.dark .badge-paid   { background-color: rgba(34, 197, 94, 0.16); color: #77ed8b; }
-html.dark .badge-pending { background-color: rgba(255, 171, 0, 0.16); color: #ffd666; }
+
+html.dark .badge-paid {
+  background-color: rgba(34, 197, 94, 0.16);
+  color: #77ed8b;
+}
+
+html.dark .badge-pending {
+  background-color: rgba(255, 171, 0, 0.16);
+  color: #ffd666;
+}
 
 /* =========================================
    SIDEBAR NAV ITEMS
@@ -279,10 +431,12 @@ html.dark .badge-pending { background-color: rgba(255, 171, 0, 0.16); color: #ff
   text-decoration: none;
   position: relative;
 }
+
 .nav-item-active {
   background-color: rgba(249, 115, 22, 0.16);
   color: #f97316;
 }
+
 .nav-item-active::before {
   content: '';
   position: absolute;
@@ -294,7 +448,11 @@ html.dark .badge-pending { background-color: rgba(255, 171, 0, 0.16); color: #ff
   background-color: #f97316;
   border-radius: 0 4px 4px 0;
 }
-.nav-item-inactive { color: rgba(255, 255, 255, 0.5); }
+
+.nav-item-inactive {
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .nav-item-inactive:hover {
   color: rgba(255, 255, 255, 0.85);
   background-color: rgba(255, 255, 255, 0.06);
@@ -315,6 +473,7 @@ html.dark .badge-pending { background-color: rgba(255, 171, 0, 0.16); color: #ff
   white-space: nowrap;
   text-align: left;
 }
+
 html.dark .table-th {
   background-color: #232f3b;
   color: #637381;
@@ -327,14 +486,24 @@ html.dark .table-th {
   color: #1c252e;
   border-bottom: 1px solid #f4f6f8;
 }
+
 html.dark .table-td {
   color: #c4cdd5;
   border-color: #2f3c48;
 }
-tr:last-child > .table-td { border-bottom: none; }
+
+tr:last-child>.table-td {
+  border-bottom: none;
+}
+
 @media (hover: hover) {
-  tr:hover > .table-td { background-color: #f9fafb; }
-  html.dark tr:hover > .table-td { background-color: #1f2c36; }
+  tr:hover>.table-td {
+    background-color: #f9fafb;
+  }
+
+  html.dark tr:hover>.table-td {
+    background-color: #1f2c36;
+  }
 }
 
 /* =========================================
@@ -343,6 +512,7 @@ tr:last-child > .table-td { border-bottom: none; }
 .receipt-card {
   background: linear-gradient(135deg, rgba(249, 115, 22, 0.05) 0%, #ffffff 100%);
 }
+
 html.dark .receipt-card {
   background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, #1c252e 100%);
 }
@@ -351,25 +521,62 @@ html.dark .receipt-card {
    ANIMATIONS
    ========================================= */
 @keyframes shimmer {
-  from { background-position: -200% 0; }
-  to   { background-position: 200% 0; }
-}
-@keyframes pageEnter {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes modalIn {
-  from { opacity: 0; transform: scale(0.96) translateY(8px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(24px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    background-position: -200% 0;
+  }
+
+  to {
+    background-position: 200% 0;
+  }
 }
 
-.page-enter  { animation: pageEnter 0.3s ease both; }
-.modal-enter { animation: modalIn 0.2s ease both; }
-.slide-in    { animation: slideInRight 0.3s ease both; }
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.page-enter {
+  animation: pageEnter 0.3s ease both;
+}
+
+.modal-enter {
+  animation: modalIn 0.2s ease both;
+}
+
+.slide-in {
+  animation: slideInRight 0.3s ease both;
+}
 
 .skeleton {
   background: linear-gradient(90deg, #f4f6f8 25%, #e8ecef 50%, #f4f6f8 75%);
@@ -377,6 +584,7 @@ html.dark .receipt-card {
   animation: shimmer 1.4s linear infinite;
   border-radius: 6px;
 }
+
 html.dark .skeleton {
   background: linear-gradient(90deg, #2b3a47 25%, #34495a 50%, #2b3a47 75%);
   background-size: 200% 100%;
@@ -391,6 +599,7 @@ html.dark .skeleton {
   background-color: rgba(255, 255, 255, 0.88);
   border-bottom: 1px solid rgba(223, 227, 232, 0.8);
 }
+
 html.dark .glass {
   background-color: rgba(28, 37, 46, 0.88);
   border-color: rgba(47, 60, 72, 0.8);
@@ -425,7 +634,9 @@ html.dark .glass {
   }
 
   /* Force entire document tree to crisp white paper and pure black text */
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     text-shadow: none !important;
     box-shadow: none !important;
     filter: none !important;
@@ -438,8 +649,7 @@ html.dark .glass {
   body,
   html.dark body,
   #root,
-  #root > div,
-  div,
+  #root>div,
   main,
   section {
     background: #ffffff !important;
@@ -453,7 +663,8 @@ html.dark .glass {
     box-shadow: none !important;
   }
 
-  html.dark * {
+  /* Don't override inline colors inside the print-only report */
+  html.dark *:not(.print-only):not(.print-only *) {
     color: #000000 !important;
     border-color: #000000 !important;
   }
@@ -471,7 +682,8 @@ html.dark .glass {
     display: none !important;
   }
 
-  .page-enter, main {
+  .page-enter,
+  main {
     padding: 0 !important;
     margin: 0 !important;
     max-width: 100% !important;
@@ -503,28 +715,17 @@ html.dark .glass {
 
   .print-table th,
   .print-table td {
-    border: 1px solid #000000 !important;
+    border: 1px solid #d1d5db !important;
     padding: 6px 8px !important;
     font-size: 9pt !important;
-    color: #000000 !important;
-    background-color: #ffffff !important;
   }
 
   .print-table th {
-    background-color: #f3f4f6 !important;
-    color: #000000 !important;
     font-weight: 800 !important;
     text-transform: uppercase !important;
   }
 
-  .print-table tr:nth-child(even) td {
-    background-color: #f9fafb !important;
-  }
-
   .print-table tfoot td {
-    background-color: #f3f4f6 !important;
-    color: #000000 !important;
     font-weight: 900 !important;
-    border-top: 2px solid #000000 !important;
   }
 }

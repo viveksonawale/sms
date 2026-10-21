@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Sun, Moon, Globe, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sun, Moon, Globe, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 import { AuthService } from '../api/auth.service';
 
 interface TopbarProps {
-  onMenuClick: () => void;
+  onMenuClick?: () => void;
 }
 
-export default function Topbar({ onMenuClick }: TopbarProps) {
+export default function Topbar({ onMenuClick: _onMenuClick }: TopbarProps) {
   const { i18n } = useTranslation();
   const theme = useStore((state) => state.theme);
   const setTheme = useStore((state) => state.setTheme);
@@ -52,15 +52,6 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     >
       {/* Left: Hamburger + Brand Icon (No Title as requested) */}
       <div className="flex items-center gap-1 sm:gap-2">
-        {/* Mobile Toggle */}
-        <button
-          onClick={onMenuClick}
-          className="md:hidden p-1.5 sm:p-2 rounded-lg transition-colors flex-shrink-0"
-          style={{ color: theme === 'dark' ? '#919eab' : '#637381' }}
-          aria-label="Open menu"
-        >
-          <Menu size={20} />
-        </button>
 
         {/* Desktop Collapse Toggle */}
         <button

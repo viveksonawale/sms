@@ -123,16 +123,16 @@ export default function AddExpense() {
         {/* Top accent bar */}
         <div style={{ height: '6px', background: 'linear-gradient(90deg, #f97316, #fdba74)' }} />
         
-        <div className="p-6 md:p-8">
-          <div className="flex items-center gap-4 mb-8">
+        <div className="p-4 sm:p-6 md:p-8">
+          <div className="flex items-center gap-4 mb-6 sm:mb-8">
             <div 
               style={{ 
-                width: '48px', height: '48px', borderRadius: '12px', 
+                width: '44px', height: '44px', borderRadius: '12px', 
                 backgroundColor: 'rgba(249, 115, 22, 0.1)', 
                 display: 'flex', alignItems: 'center', justifyContent: 'center' 
               }}
             >
-              <Receipt size={24} style={{ color: '#f97316' }} />
+              <Receipt size={22} style={{ color: '#f97316' }} />
             </div>
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: 700, color: textPrimary }}>Expense Information</h3>
@@ -140,9 +140,9 @@ export default function AddExpense() {
             </div>
           </div>
 
-          <form onSubmit={handleSave} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
+          <form onSubmit={handleSave} className="space-y-5 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="sm:col-span-2">
                 <label className="label">{t('expenseTitle')} *</label>
                 <input 
                   type="text" 

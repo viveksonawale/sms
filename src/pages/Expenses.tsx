@@ -155,8 +155,8 @@ export default function Expenses() {
       </div>
 
       {/* Filters */}
-      <div className="card p-4" style={{ backgroundColor: cardBg }}>
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="card p-3.5 sm:p-4" style={{ backgroundColor: cardBg }}>
+        <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
           <div className="flex-1 relative">
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: textSecondary }} />
             <input
@@ -167,9 +167,9 @@ export default function Expenses() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 w-full md:w-auto">
             <select
-              className="input-field w-auto"
+              className="input-field w-full sm:w-auto cursor-pointer"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
@@ -177,7 +177,7 @@ export default function Expenses() {
               {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <select
-              className="input-field w-auto"
+              className="input-field w-full sm:w-auto cursor-pointer"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
@@ -194,8 +194,8 @@ export default function Expenses() {
         {/* Table Area */}
         <div className="lg:col-span-2 space-y-4">
           <div className="card" style={{ backgroundColor: cardBg }}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[700px]">
+            <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table className="w-full text-left border-collapse min-w-[650px]">
                 <thead>
                   <tr>
                     <th style={{ padding: '16px', color: textSecondary, fontSize: '13px', fontWeight: 600, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8'}` }}>Date</th>

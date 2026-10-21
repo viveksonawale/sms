@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import MobileNav from './MobileNav';
 import { useStore } from '../store/useStore';
 import { Helmet } from 'react-helmet-async';
 
@@ -32,15 +33,19 @@ export default function Layout() {
       >
         <Topbar onMenuClick={() => setIsMobileMenuOpen(true)} />
         <main
-          className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 mobile-scroll print:p-0 print:overflow-visible print:!bg-white"
+          className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6 lg:p-8 mobile-scroll print:p-0 print:overflow-visible print:!bg-white"
           style={{
             backgroundColor: isDark ? '#141a21' : '#f9fafb',
             WebkitOverflowScrolling: 'touch',
             overscrollBehaviorY: 'contain',
+            paddingBottom: 'calc(110px + env(safe-area-inset-bottom, 24px))',
           }}
         >
           <Outlet />
+          {/* Spacer to guarantee last items scroll well clear of mobile navigation bar */}
+          <div className="h-20 md:hidden w-full flex-shrink-0" aria-hidden="true" />
         </main>
+        <MobileNav />
       </div>
       </div>
     </>

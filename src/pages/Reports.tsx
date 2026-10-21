@@ -338,19 +338,24 @@ export default function Reports() {
 
   const printNetBalance = printTotalCollected - printTotalExpenses;
 
-  // Print Member Ledger
+  // Print Member Ledger  only members who have paid at least something
   const printMemberLedger = useMemo(() => {
-    return owners.map((owner) => {
-      const oPayments = printPayments.filter((p) => p.ownerId === owner.id);
-      const totalPaid = oPayments.reduce((acc, p) => acc + p.amount, 0);
-      const monthsCovered = oPayments.map((p) => p.month).join(', ');
-      return {
-        owner,
-        totalPaid,
-        monthsCovered: monthsCovered || 'None',
-        paymentsCount: oPayments.length,
-      };
-    });
+    return owners
+      .map((owner) => {
+        const oPayments = printPayments.filter((p) => p.ownerId === owner.id);
+        const totalPaid = oPayments.reduce((acc, p) => acc + p.amount, 0);
+        const monthsCovered = oPayments.map((p) => p.month).filter(Boolean).join(', ');
+        const receiptNumbers = oPayments.map((p) => p.receiptNumber).filter(Boolean).join(', ');
+        return {
+          owner,
+          totalPaid,
+          monthsCovered: monthsCovered || '',
+          receiptNumbers: receiptNumbers || '',
+          paymentsCount: oPayments.length,
+          payments: oPayments,
+        };
+      })
+      .filter((m) => m.totalPaid > 0); // Only show members who paid
   }, [owners, printPayments]);
 
   // Execute Print
@@ -448,12 +453,12 @@ export default function Reports() {
         </div>
 
         {/* PRINT BUTTON ON THE RIGHT SIDE OF SCREEN */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
             id="btn-print-report"
             onClick={() => setIsPrintModalOpen(true)}
-            className="btn-primary flex items-center justify-center gap-2 px-4 py-2.5 shadow-md hover:shadow-lg transition-all"
-            style={{ fontSize: '14px', borderRadius: '10px' }}
+            className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 shadow-md hover:shadow-lg transition-all"
+            style={{ fontSize: '14px', borderRadius: '10px', touchAction: 'manipulation' }}
           >
             <Printer size={18} />
             <span>{t('printReport')}</span>
@@ -465,7 +470,7 @@ export default function Reports() {
           SCREEN VIEW: Filter Controls Toolbar
           ======================================================== */}
       <div
-        className="no-print p-4 rounded-xl flex flex-wrap items-center justify-between gap-4"
+        className="no-print p-3 sm:p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
         style={{
           backgroundColor: cardBg,
           boxShadow: isDark
@@ -473,16 +478,17 @@ export default function Reports() {
             : '0 0 2px 0 rgba(145,158,171,0.2), 0 12px 24px -4px rgba(145,158,171,0.12)',
         }}
       >
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Year Type Switcher */}
+        <div className="flex flex-col sm:flex-row flex-wrap sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+          {/* Year Type Switcher - Segmented Control */}
           <div
-            className="flex p-1 rounded-lg"
+            className="flex p-1 rounded-lg w-full sm:w-auto"
             style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8' }}
           >
             <button
               onClick={() => setYearType('financial')}
+              className="flex-1 sm:flex-initial text-center transition-all"
               style={{
-                padding: '6px 14px',
+                padding: '6px 12px',
                 fontSize: '12px',
                 fontWeight: 700,
                 borderRadius: '6px',
@@ -490,15 +496,16 @@ export default function Reports() {
                 cursor: 'pointer',
                 backgroundColor: yearType === 'financial' ? '#f97316' : 'transparent',
                 color: yearType === 'financial' ? '#ffffff' : textSecondary,
-                transition: 'all 0.15s ease',
+                touchAction: 'manipulation',
               }}
             >
-              {t('financialYear')} (Apr - Mar)
+              {t('financialYear')}
             </button>
             <button
               onClick={() => setYearType('calendar')}
+              className="flex-1 sm:flex-initial text-center transition-all"
               style={{
-                padding: '6px 14px',
+                padding: '6px 12px',
                 fontSize: '12px',
                 fontWeight: 700,
                 borderRadius: '6px',
@@ -506,53 +513,46 @@ export default function Reports() {
                 cursor: 'pointer',
                 backgroundColor: yearType === 'calendar' ? '#f97316' : 'transparent',
                 color: yearType === 'calendar' ? '#ffffff' : textSecondary,
-                transition: 'all 0.15s ease',
+                touchAction: 'manipulation',
               }}
             >
-              {t('calendarYear')} (Jan - Dec)
+              {t('calendarYear')}
             </button>
           </div>
 
-          {/* Year Dropdown */}
-          <div className="flex items-center gap-2">
-            <span style={{ fontSize: '13px', fontWeight: 600, color: textSecondary }}>
-              {t('month')}:
-            </span>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Year Dropdown */}
             <select
               value={selectedBaseYear}
               onChange={(e) => setSelectedBaseYear(Number(e.target.value))}
-              className="input-field cursor-pointer"
+              className="input-field cursor-pointer flex-1 sm:w-auto"
               style={{
-                padding: '6px 12px',
+                padding: '7px 10px',
                 fontSize: '13px',
                 fontWeight: 700,
-                width: 'auto',
-                minWidth: '130px',
+                minWidth: '120px',
               }}
             >
               {availableYears.map((y) => (
                 <option key={y} value={y}>
-                  {yearType === 'financial' ? `FY ${y} - ${y + 1}` : `Year ${y}`}
+                  {yearType === 'financial' ? `FY ${y}-${y + 1}` : `Year ${y}`}
                 </option>
               ))}
             </select>
-          </div>
 
-          {/* Month Dropdown Filter */}
-          <div className="flex items-center gap-2">
+            {/* Month Dropdown Filter */}
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="input-field cursor-pointer"
+              className="input-field cursor-pointer flex-1 sm:w-auto"
               style={{
-                padding: '6px 12px',
+                padding: '7px 10px',
                 fontSize: '13px',
                 fontWeight: 600,
-                width: 'auto',
-                minWidth: '140px',
+                minWidth: '130px',
               }}
             >
-              <option value="all">{t('allMonths')} (Full Year)</option>
+              <option value="all">{t('allMonths')}</option>
               {yearMonths.map((ym) => (
                 <option key={ym.value} value={ym.value}>
                   {ym.label}
@@ -563,7 +563,7 @@ export default function Reports() {
         </div>
 
         {/* Current Active Label */}
-        <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500">
+        <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 self-start sm:self-auto">
           <Calendar size={14} />
           <span>
             {yearType === 'financial'
@@ -780,8 +780,8 @@ export default function Reports() {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px' }}>
+          <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '600px' }}>
               <thead>
                 <tr
                   style={{
@@ -817,9 +817,8 @@ export default function Reports() {
                       ₹{row.expenses.toLocaleString('en-IN')}
                     </td>
                     <td
-                      className={`py-3 px-4 font-bold text-right ${
-                        row.net >= 0 ? 'text-blue-500' : 'text-red-400'
-                      }`}
+                      className={`py-3 px-4 font-bold text-right ${row.net >= 0 ? 'text-blue-500' : 'text-red-400'
+                        }`}
                     >
                       ₹{row.net.toLocaleString('en-IN')}
                     </td>
@@ -855,11 +854,10 @@ export default function Reports() {
                     ₹{financialStats.totalExpenses.toLocaleString('en-IN')}
                   </td>
                   <td
-                    className={`py-3.5 px-4 text-right ${
-                      financialStats.netBalance >= 0
+                    className={`py-3.5 px-4 text-right ${financialStats.netBalance >= 0
                         ? 'text-blue-600 dark:text-blue-400'
                         : 'text-red-500'
-                    }`}
+                      }`}
                   >
                     ₹{financialStats.netBalance.toLocaleString('en-IN')}
                   </td>
@@ -912,8 +910,8 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px' }}>
+        <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table className="w-full text-left" style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '650px' }}>
             <thead>
               <tr
                 style={{
@@ -1329,131 +1327,460 @@ export default function Reports() {
         className="print-only"
         style={{
           backgroundColor: '#ffffff',
-          color: '#000000',
+          color: '#1c252e',
           padding: '0',
           margin: '0',
-          fontFamily: 'sans-serif',
+          fontFamily: "'Segoe UI', Arial, sans-serif",
         }}
       >
-        {/* Society Letterhead */}
-        <div style={{ textAlign: 'center', borderBottom: '2.5px solid #000000', paddingBottom: '14px', marginBottom: '18px' }}>
-          <h1 style={{ fontSize: '20pt', fontWeight: 900, textTransform: 'uppercase', margin: 0, color: '#000000', letterSpacing: '0.5px' }}>
-            {societyName}
-          </h1>
-          <p style={{ fontSize: '10.5pt', margin: '5px 0 0 0', fontWeight: 700, color: '#111827' }}>
-            CO-OPERATIVE HOUSING SOCIETY MAINTENANCE & FINANCIAL AUDIT STATEMENT
-          </p>
-          <p style={{ fontSize: '10pt', margin: '4px 0 0 0', fontWeight: 700, color: '#111827' }}>
-            Period: {printPeriodLabel}
-          </p>
-          <p style={{ fontSize: '8.5pt', color: '#374151', margin: '3px 0 0 0' }}>
-            Generated on: {format(new Date(), 'dd MMMM yyyy, hh:mm a')}
-          </p>
+        {/* ── LETTERHEAD ── */}
+        <div
+          style={{
+            borderBottom: '3px solid #f97316',
+            paddingBottom: '16px',
+            marginBottom: '20px',
+          }}
+        >
+          {/* Top accent bar */}
+          <div
+            style={{
+              height: '6px',
+              background: 'linear-gradient(90deg, #f97316 0%, #fb923c 60%, #fdba74 100%)',
+              borderRadius: '4px 4px 0 0',
+              marginBottom: '14px',
+            }}
+          />
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            {/* Society Info */}
+            <div style={{ flex: 1 }}>
+              <h1
+                style={{
+                  fontSize: '22pt',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  margin: 0,
+                  color: '#f97316',
+                  letterSpacing: '0.8px',
+                  lineHeight: 1.1,
+                }}
+              >
+                {societyName}
+              </h1>
+              <p
+                style={{
+                  fontSize: '9.5pt',
+                  margin: '5px 0 0 0',
+                  fontWeight: 600,
+                  color: '#637381',
+                  letterSpacing: '0.3px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Co-operative Housing Society · Maharashtra
+              </p>
+              <p
+                style={{
+                  fontSize: '9pt',
+                  margin: '2px 0 0 0',
+                  color: '#637381',
+                }}
+              >
+                Reg. under Maharashtra Co-operative Societies Act, 1960
+              </p>
+            </div>
+
+            {/* Report Badge */}
+            <div
+              style={{
+                textAlign: 'right',
+                minWidth: '200px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'inline-block',
+                  backgroundColor: '#f97316',
+                  color: '#ffffff',
+                  padding: '6px 14px',
+                  borderRadius: '4px',
+                  fontSize: '8pt',
+                  fontWeight: 800,
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Financial Audit Report
+              </div>
+              <p style={{ fontSize: '9pt', margin: '6px 0 0 0', color: '#1c252e', fontWeight: 700 }}>
+                Period: {printPeriodLabel}
+              </p>
+              <p style={{ fontSize: '8pt', color: '#637381', margin: '2px 0 0 0' }}>
+                Generated: {format(new Date(), 'dd MMM yyyy, hh:mm a')}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Executive Summary Table */}
-        <div className="print-break-inside-avoid" style={{ marginBottom: '18px' }}>
-          <h2 style={{ fontSize: '12pt', fontWeight: 800, marginBottom: '6px', color: '#000000', borderBottom: '1.5px solid #000000', paddingBottom: '4px' }}>
-            1. FINANCIAL OVERVIEW SNAPSHOT
-          </h2>
-          <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000000', backgroundColor: '#ffffff' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f3f4f6' }}>
-                <th style={{ textAlign: 'left', padding: '8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Category</th>
-                <th style={{ textAlign: 'right', padding: '8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Total Amount (INR)</th>
-                <th style={{ textAlign: 'left', padding: '8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Audit Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ fontWeight: 700, padding: '7px 8px', border: '1px solid #000000', color: '#000000', backgroundColor: '#ffffff' }}>
-                  Total Maintenance Collections
-                </td>
-                <td style={{ textAlign: 'right', fontWeight: 800, padding: '7px 8px', border: '1px solid #000000', color: '#15803d', backgroundColor: '#ffffff' }}>
-                  ₹{printTotalCollected.toLocaleString('en-IN')}
-                </td>
-                <td style={{ padding: '7px 8px', border: '1px solid #000000', color: '#111827', backgroundColor: '#ffffff' }}>
-                  {printPayments.length} maintenance receipts cleared
-                </td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 700, padding: '7px 8px', border: '1px solid #000000', color: '#000000', backgroundColor: '#ffffff' }}>
-                  Total Society Operational Expenses
-                </td>
-                <td style={{ textAlign: 'right', fontWeight: 800, padding: '7px 8px', border: '1px solid #000000', color: '#b91c1c', backgroundColor: '#ffffff' }}>
-                  ₹{printTotalExpenses.toLocaleString('en-IN')}
-                </td>
-                <td style={{ padding: '7px 8px', border: '1px solid #000000', color: '#111827', backgroundColor: '#ffffff' }}>
-                  {printExpenses.length} society vouchers recorded
-                </td>
-              </tr>
-              <tr style={{ backgroundColor: '#f3f4f6', fontWeight: 900 }}>
-                <td style={{ padding: '8px', border: '1.5px solid #000000', color: '#000000' }}>
-                  NET BALANCE / SURPLUS
-                </td>
-                <td style={{ textAlign: 'right', fontSize: '11pt', padding: '8px', border: '1.5px solid #000000', color: printNetBalance >= 0 ? '#15803d' : '#b91c1c' }}>
-                  ₹{printNetBalance.toLocaleString('en-IN')}
-                </td>
-                <td style={{ padding: '8px', border: '1.5px solid #000000', color: '#000000' }}>
-                  {printNetBalance >= 0 ? 'Surplus reserve in period' : 'Deficit in period'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Member Payment Ledger */}
-        {includeMemberLedger && (
-          <div className="print-break-inside-avoid" style={{ marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '12pt', fontWeight: 800, marginBottom: '6px', color: '#000000', borderBottom: '1.5px solid #000000', paddingBottom: '4px' }}>
-              2. MEMBER PAYMENT HISTORY (WHO PAID WHAT)
+        {/* ── SECTION 1: FINANCIAL SUMMARY BOX ── */}
+        <div className="print-break-inside-avoid" style={{ marginBottom: '22px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '10px',
+            }}
+          >
+            <div
+              style={{
+                width: '4px',
+                height: '18px',
+                backgroundColor: '#f97316',
+                borderRadius: '2px',
+                flexShrink: 0,
+              }}
+            />
+            <h2
+              style={{
+                fontSize: '11pt',
+                fontWeight: 800,
+                margin: 0,
+                color: '#f97316',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
+              Section 1  Financial Overview
             </h2>
-            <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000000', backgroundColor: '#ffffff' }}>
+          </div>
+
+          {/* 3-column summary boxes */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '10px',
+              marginBottom: '14px',
+            }}
+          >
+            <div
+              style={{
+                border: '1.5px solid #d1fae5',
+                borderRadius: '6px',
+                padding: '12px',
+                backgroundColor: '#fff7ed',
+                textAlign: 'center',
+              }}
+            >
+              <p style={{ fontSize: '8pt', color: '#15803d', fontWeight: 700, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Total Collected</p>
+              <p style={{ fontSize: '14pt', fontWeight: 900, color: '#15803d', margin: 0 }}>
+                ₹{printTotalCollected.toLocaleString('en-IN')}
+              </p>
+              <p style={{ fontSize: '7.5pt', color: '#637381', margin: '3px 0 0 0' }}>
+                {printPayments.length} receipts · {printMemberLedger.length} members
+              </p>
+            </div>
+            <div
+              style={{
+                border: '1.5px solid #fee2e2',
+                borderRadius: '6px',
+                padding: '12px',
+                backgroundColor: '#fef2f2',
+                textAlign: 'center',
+              }}
+            >
+              <p style={{ fontSize: '8pt', color: '#b91c1c', fontWeight: 700, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Total Expenses</p>
+              <p style={{ fontSize: '14pt', fontWeight: 900, color: '#b91c1c', margin: 0 }}>
+                ₹{printTotalExpenses.toLocaleString('en-IN')}
+              </p>
+              <p style={{ fontSize: '7.5pt', color: '#637381', margin: '3px 0 0 0' }}>
+                {printExpenses.length} vouchers recorded
+              </p>
+            </div>
+            <div
+              style={{
+                border: `1.5px solid ${printNetBalance >= 0 ? '#fed7aa' : '#fee2e2'}`,
+                borderRadius: '6px',
+                padding: '12px',
+                backgroundColor: printNetBalance >= 0 ? '#fff7ed' : '#fef2f2',
+                textAlign: 'center',
+              }}
+            >
+              <p
+                style={{
+                  fontSize: '8pt',
+                  color: printNetBalance >= 0 ? '#f97316' : '#b91c1c',
+                  fontWeight: 700,
+                  margin: '0 0 4px 0',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Net Balance
+              </p>
+              <p
+                style={{
+                  fontSize: '14pt',
+                  fontWeight: 900,
+                  color: printNetBalance >= 0 ? '#f97316' : '#b91c1c',
+                  margin: 0,
+                }}
+              >
+                ₹{printNetBalance.toLocaleString('en-IN')}
+              </p>
+              <p style={{ fontSize: '7.5pt', fontWeight: 700, color: printNetBalance >= 0 ? '#15803d' : '#b91c1c', margin: '3px 0 0 0' }}>
+                {printNetBalance >= 0 ? 'Surplus Reserve' : 'Deficit in Period'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SECTION 2: MEMBER PAYMENT LEDGER ── */}
+        {includeMemberLedger && (
+          <div className="print-break-inside-avoid" style={{ marginBottom: '22px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '10px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    width: '4px',
+                    height: '18px',
+                    backgroundColor: '#15803d',
+                    borderRadius: '2px',
+                    flexShrink: 0,
+                  }}
+                />
+                <h2
+                  style={{
+                    fontSize: '11pt',
+                    fontWeight: 800,
+                    margin: 0,
+                    color: '#f97316',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  Section 2  Member Maintenance Payment Ledger
+                </h2>
+              </div>
+              <span
+                style={{
+                  fontSize: '8pt',
+                  fontWeight: 700,
+                  color: '#15803d',
+                  backgroundColor: '#fff7ed',
+                  border: '1px solid #d1fae5',
+                  padding: '3px 10px',
+                  borderRadius: '12px',
+                }}
+              >
+                {printMemberLedger.length} Members Paid
+              </span>
+            </div>
+
+            <table
+              className="print-table"
+              style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#ffffff' }}
+            >
               <thead>
-                <tr style={{ backgroundColor: '#f3f4f6' }}>
-                  <th style={{ width: '10%', padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Flat No.</th>
-                  <th style={{ width: '25%', padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Member Name</th>
-                  <th style={{ width: '16%', padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Contact</th>
-                  <th style={{ width: '16%', textAlign: 'right', padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Total Paid (₹)</th>
-                  <th style={{ width: '33%', padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Months Covered / Receipts</th>
+                <tr style={{ backgroundColor: '#f97316' }}>
+                  <th
+                    style={{
+                      width: '8%',
+                      padding: '8px 10px',
+                      border: '1px solid #ea6c0a',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '8.5pt',
+                      textAlign: 'left',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                    }}
+                  >
+                    Flat
+                  </th>
+                  <th
+                    style={{
+                      width: '30%',
+                      padding: '8px 10px',
+                      border: '1px solid #ea6c0a',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '8.5pt',
+                      textAlign: 'left',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                    }}
+                  >
+                    Member Name
+                  </th>
+                  <th
+                    style={{
+                      width: '14%',
+                      padding: '8px 10px',
+                      border: '1px solid #ea6c0a',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '8.5pt',
+                      textAlign: 'right',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                    }}
+                  >
+                    Total Paid (₹)
+                  </th>
+                  <th
+                    style={{
+                      width: '12%',
+                      padding: '8px 10px',
+                      border: '1px solid #ea6c0a',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '8.5pt',
+                      textAlign: 'center',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                    }}
+                  >
+                    Receipts
+                  </th>
+                  <th
+                    style={{
+                      width: '36%',
+                      padding: '8px 10px',
+                      border: '1px solid #ea6c0a',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '8.5pt',
+                      textAlign: 'left',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                    }}
+                  >
+                    Months Covered
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {printMemberLedger.map((m, idx) => (
-                  <tr key={m.owner.id} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
-                    <td style={{ fontWeight: 800, padding: '6px 8px', border: '1px solid #000000', color: '#000000' }}>
+                  <tr
+                    key={m.owner.id}
+                    style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fff7ed' }}
+                  >
+                    <td
+                      style={{
+                        fontWeight: 800,
+                        padding: '7px 10px',
+                        border: '1px solid #e5e7eb',
+                        color: '#f97316',
+                        fontSize: '9pt',
+                      }}
+                    >
                       {m.owner.flat}
                     </td>
-                    <td style={{ padding: '6px 8px', border: '1px solid #000000', color: '#000000' }}>
-                      <span style={{ fontWeight: 700 }}>{m.owner.name}</span>
+                    <td
+                      style={{
+                        padding: '7px 10px',
+                        border: '1px solid #e5e7eb',
+                        color: '#1c252e',
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, fontSize: '9.5pt' }}>{m.owner.name}</span>
                       {m.owner.nameMr && (
-                        <span style={{ fontSize: '8pt', color: '#374151', display: 'block' }}>
-                          ({m.owner.nameMr})
+                        <span
+                          style={{
+                            fontSize: '8pt',
+                            color: '#637381',
+                            display: 'block',
+                            marginTop: '1px',
+                          }}
+                        >
+                          {m.owner.nameMr}
                         </span>
                       )}
                     </td>
-                    <td style={{ fontFamily: 'monospace', padding: '6px 8px', border: '1px solid #000000', color: '#111827', fontSize: '9pt' }}>
-                      +{m.owner.phone}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 800, padding: '6px 8px', border: '1px solid #000000', color: m.totalPaid > 0 ? '#15803d' : '#b91c1c' }}>
+                    <td
+                      style={{
+                        textAlign: 'right',
+                        fontWeight: 900,
+                        padding: '7px 10px',
+                        border: '1px solid #e5e7eb',
+                        color: '#15803d',
+                        fontSize: '10pt',
+                      }}
+                    >
                       ₹{m.totalPaid.toLocaleString('en-IN')}
                     </td>
-                    <td style={{ fontSize: '8.5pt', padding: '6px 8px', border: '1px solid #000000', color: '#111827' }}>
+                    <td
+                      style={{
+                        textAlign: 'center',
+                        padding: '7px 10px',
+                        border: '1px solid #e5e7eb',
+                        color: '#1c252e',
+                        fontSize: '9pt',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {m.paymentsCount}
+                    </td>
+                    <td
+                      style={{
+                        fontSize: '8.5pt',
+                        padding: '7px 10px',
+                        border: '1px solid #e5e7eb',
+                        color: '#1c252e',
+                        lineHeight: '1.4',
+                      }}
+                    >
                       {m.monthsCovered}
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr style={{ backgroundColor: '#f3f4f6', fontWeight: 900 }}>
-                  <td colSpan={3} style={{ padding: '8px', border: '1.5px solid #000000', color: '#000000' }}>
-                    TOTAL COLLECTED
+                <tr style={{ backgroundColor: '#f97316' }}>
+                  <td
+                    colSpan={2}
+                    style={{
+                      padding: '9px 10px',
+                      border: '1px solid #ea6c0a',
+                      color: '#ffffff',
+                      fontWeight: 900,
+                      fontSize: '9.5pt',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Grand Total  {printMemberLedger.length} Members
                   </td>
-                  <td style={{ textAlign: 'right', padding: '8px', border: '1.5px solid #000000', color: '#15803d', fontSize: '10pt' }}>
+                  <td
+                    style={{
+                      textAlign: 'right',
+                      padding: '9px 10px',
+                      border: '1px solid #ea6c0a',
+                      color: '#ffffff',
+                      fontSize: '11pt',
+                      fontWeight: 900,
+                    }}
+                  >
                     ₹{printTotalCollected.toLocaleString('en-IN')}
                   </td>
-                  <td style={{ padding: '8px', border: '1.5px solid #000000', color: '#111827' }}>
-                    {owners.length} registered units
+                  <td
+                    colSpan={2}
+                    style={{
+                      padding: '9px 10px',
+                      border: '1px solid #ea6c0a',
+                      color: '#fed7aa',
+                      fontSize: '8.5pt',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {printPayments.length} total receipts cleared
                   </td>
                 </tr>
               </tfoot>
@@ -1461,45 +1788,177 @@ export default function Reports() {
           </div>
         )}
 
-        {/* Society Expenses Breakdown */}
-        {includeExpenses && (
-          <div className="print-break-inside-avoid" style={{ marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '12pt', fontWeight: 800, marginBottom: '6px', color: '#000000', borderBottom: '1.5px solid #000000', paddingBottom: '4px' }}>
-              3. SOCIETY OPERATIONAL EXPENDITURE
-            </h2>
-            <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000000', backgroundColor: '#ffffff' }}>
+        {/* ── SECTION 3: MONTHLY SUMMARY ── */}
+        {includeMonthlySummary && (
+          <div className="print-break-inside-avoid" style={{ marginBottom: '22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <div
+                style={{
+                  width: '4px',
+                  height: '18px',
+                  backgroundColor: '#f97316',
+                  borderRadius: '2px',
+                  flexShrink: 0,
+                }}
+              />
+              <h2
+                style={{
+                  fontSize: '11pt',
+                  fontWeight: 800,
+                  margin: 0,
+                  color: '#f97316',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Section 3  Monthly Financial Breakdown
+              </h2>
+            </div>
+
+            <table
+              className="print-table"
+              style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#ffffff' }}
+            >
               <thead>
-                <tr style={{ backgroundColor: '#f3f4f6' }}>
-                  <th style={{ padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Date</th>
-                  <th style={{ padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Expense Title</th>
-                  <th style={{ padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Category</th>
-                  <th style={{ padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Paid To</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', border: '1px solid #000000', color: '#000000', fontWeight: 800 }}>Amount (₹)</th>
+                <tr style={{ backgroundColor: '#1c252e' }}>
+                  {["Month", "Collections (₹)", "Expenses (₹)", "Net (₹)", "Paid Members"].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        padding: '8px 10px',
+                        border: '1px solid #1c252e',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '8.5pt',
+                        textAlign: h === 'Month' || h === 'Paid Members' ? 'center' : 'right',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyBreakdown.map((row, idx) => (
+                  <tr key={row.label} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fff7ed' }}>
+                    <td style={{ fontWeight: 700, padding: '6px 10px', border: '1px solid #e5e7eb', color: '#1c252e', fontSize: '9pt', textAlign: 'center' }}>
+                      {row.label}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '6px 10px', border: '1px solid #e5e7eb', color: '#15803d', fontWeight: 700, fontSize: '9pt' }}>
+                      ₹{row.collections.toLocaleString('en-IN')}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '6px 10px', border: '1px solid #e5e7eb', color: '#b91c1c', fontWeight: 700, fontSize: '9pt' }}>
+                      ₹{row.expenses.toLocaleString('en-IN')}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '6px 10px', border: '1px solid #e5e7eb', color: row.net >= 0 ? '#f97316' : '#b91c1c', fontWeight: 800, fontSize: '9pt' }}>
+                      ₹{row.net.toLocaleString('en-IN')}
+                    </td>
+                    <td style={{ textAlign: 'center', padding: '6px 10px', border: '1px solid #e5e7eb', color: '#1c252e', fontSize: '9pt' }}>
+                      {row.paidMembersCount} / {owners.length}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ backgroundColor: '#1c252e' }}>
+                  <td style={{ padding: '8px 10px', border: '1px solid #1c252e', color: '#ffffff', fontWeight: 900, fontSize: '9pt', textAlign: 'center' }}>ANNUAL TOTAL</td>
+                  <td style={{ textAlign: 'right', padding: '8px 10px', border: '1px solid #1c252e', color: '#86efac', fontWeight: 900, fontSize: '10pt' }}>₹{printTotalCollected.toLocaleString('en-IN')}</td>
+                  <td style={{ textAlign: 'right', padding: '8px 10px', border: '1px solid #1c252e', color: '#fca5a5', fontWeight: 900, fontSize: '10pt' }}>₹{printTotalExpenses.toLocaleString('en-IN')}</td>
+                  <td style={{ textAlign: 'right', padding: '8px 10px', border: '1px solid #1c252e', color: printNetBalance >= 0 ? '#fed7aa' : '#fca5a5', fontWeight: 900, fontSize: '10pt' }}>₹{printNetBalance.toLocaleString('en-IN')}</td>
+                  <td style={{ textAlign: 'center', padding: '8px 10px', border: '1px solid #1c252e', color: '#919eab', fontWeight: 700, fontSize: '9pt' }}>{owners.length} Units</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        {/* ── SECTION 4: SOCIETY EXPENSES ── */}
+        {includeExpenses && (
+          <div className="print-break-inside-avoid" style={{ marginBottom: '22px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <div
+                style={{
+                  width: '4px',
+                  height: '18px',
+                  backgroundColor: '#b91c1c',
+                  borderRadius: '2px',
+                  flexShrink: 0,
+                }}
+              />
+              <h2
+                style={{
+                  fontSize: '11pt',
+                  fontWeight: 800,
+                  margin: 0,
+                  color: '#f97316',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Section 4  Society Operational Expenditure
+              </h2>
+            </div>
+
+            <table
+              className="print-table"
+              style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#ffffff' }}
+            >
+              <thead>
+                <tr style={{ backgroundColor: '#1c252e' }}>
+                  {["Date", "Expense Title", "Category", "Paid To", "Amount (₹)"].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        padding: '8px 10px',
+                        border: '1px solid #1c252e',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '8.5pt',
+                        textAlign: h === 'Amount (₹)' ? 'right' : 'left',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {printExpenses.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', fontStyle: 'italic', padding: '12px', border: '1px solid #000000', color: '#4b5563', backgroundColor: '#ffffff' }}>
+                    <td
+                      colSpan={5}
+                      style={{
+                        textAlign: 'center',
+                        fontStyle: 'italic',
+                        padding: '14px',
+                        border: '1px solid #e5e7eb',
+                        color: '#637381',
+                        backgroundColor: '#fef2f2',
+                      }}
+                    >
                       No expenses recorded for this period.
                     </td>
                   </tr>
                 ) : (
                   printExpenses.map((e, idx) => (
-                    <tr key={e.id} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
-                      <td style={{ padding: '6px 8px', border: '1px solid #000000', color: '#111827', fontSize: '9pt' }}>
-                        {e.date}
+                    <tr key={e.id} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fff7ed' }}>
+                      <td style={{ padding: '7px 10px', border: '1px solid #e5e7eb', color: '#1c252e', fontSize: '8.5pt', whiteSpace: 'nowrap' }}>
+                        {e.date ? format(new Date(e.date), 'dd MMM yyyy') : ''}
                       </td>
-                      <td style={{ fontWeight: 700, padding: '6px 8px', border: '1px solid #000000', color: '#000000' }}>
+                      <td style={{ fontWeight: 700, padding: '7px 10px', border: '1px solid #e5e7eb', color: '#1c252e', fontSize: '9pt' }}>
                         {e.title}
                       </td>
-                      <td style={{ padding: '6px 8px', border: '1px solid #000000', color: '#111827' }}>
+                      <td style={{ padding: '7px 10px', border: '1px solid #e5e7eb', color: '#1c252e', fontSize: '8.5pt' }}>
                         {e.category}
                       </td>
-                      <td style={{ padding: '6px 8px', border: '1px solid #000000', color: '#111827' }}>
+                      <td style={{ padding: '7px 10px', border: '1px solid #e5e7eb', color: '#1c252e', fontSize: '8.5pt' }}>
                         {e.paidTo}
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, padding: '6px 8px', border: '1px solid #000000', color: '#b91c1c' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 800, padding: '7px 10px', border: '1px solid #e5e7eb', color: '#b91c1c', fontSize: '9.5pt' }}>
                         ₹{e.amount.toLocaleString('en-IN')}
                       </td>
                     </tr>
@@ -1507,11 +1966,30 @@ export default function Reports() {
                 )}
               </tbody>
               <tfoot>
-                <tr style={{ backgroundColor: '#f3f4f6', fontWeight: 900 }}>
-                  <td colSpan={4} style={{ padding: '8px', border: '1.5px solid #000000', color: '#000000' }}>
-                    TOTAL EXPENDITURE
+                <tr style={{ backgroundColor: '#1c252e' }}>
+                  <td
+                    colSpan={4}
+                    style={{
+                      padding: '9px 10px',
+                      border: '1px solid #1c252e',
+                      color: '#ffffff',
+                      fontWeight: 900,
+                      fontSize: '9.5pt',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Total Expenditure  {printExpenses.length} Vouchers
                   </td>
-                  <td style={{ textAlign: 'right', padding: '8px', border: '1.5px solid #000000', color: '#b91c1c', fontSize: '10pt' }}>
+                  <td
+                    style={{
+                      textAlign: 'right',
+                      padding: '9px 10px',
+                      border: '1px solid #1c252e',
+                      color: '#fca5a5',
+                      fontSize: '11pt',
+                      fontWeight: 900,
+                    }}
+                  >
                     ₹{printTotalExpenses.toLocaleString('en-IN')}
                   </td>
                 </tr>
@@ -1520,22 +1998,63 @@ export default function Reports() {
           </div>
         )}
 
-        {/* Authorized Signatories Block */}
-        <div className="print-break-inside-avoid" style={{ marginTop: '45px', paddingTop: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', fontSize: '10pt', fontWeight: 800, color: '#000000' }}>
-            <div>
-              <div style={{ borderBottom: '1.5px solid #000000', width: '160px', marginBottom: '8px' }} />
-              <span style={{ color: '#000000' }}>Chairman</span>
-            </div>
-            <div>
-              <div style={{ borderBottom: '1.5px solid #000000', width: '160px', marginBottom: '8px' }} />
-              <span style={{ color: '#000000' }}>Secretary</span>
-            </div>
-            <div>
-              <div style={{ borderBottom: '1.5px solid #000000', width: '160px', marginBottom: '8px' }} />
-              <span style={{ color: '#000000' }}>Treasurer</span>
-            </div>
+        {/* ── FOOTER: Declaration + Signatories ── */}
+        <div
+          className="print-break-inside-avoid"
+          style={{
+            marginTop: '40px',
+            borderTop: '2px solid #f97316',
+            paddingTop: '18px',
+          }}
+        >
+          {/* Declaration */}
+          <p
+            style={{
+              fontSize: '8pt',
+              color: '#637381',
+              fontStyle: 'italic',
+              textAlign: 'center',
+              margin: '0 0 24px 0',
+              lineHeight: '1.5',
+            }}
+          >
+            This financial statement has been prepared based on the maintenance collections and expenditure records of {societyName} for the period {printPeriodLabel}.
+            The undersigned certify that the information contained herein is true and correct to the best of their knowledge.
+          </p>
+
+          {/* Signatories */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '20px',
+              textAlign: 'center',
+            }}
+          >
+            {['Chairman', 'Secretary', 'Treasurer'].map((role) => (
+              <div key={role}>
+                <div
+                  style={{
+                    height: '48px',
+                    borderBottom: '2px solid #f97316',
+                    marginBottom: '6px',
+                  }}
+                />
+                <p style={{ fontSize: '9.5pt', fontWeight: 800, color: '#f97316', margin: '0 0 2px 0' }}>{role}</p>
+                <p style={{ fontSize: '8pt', color: '#637381', margin: 0 }}>{societyName}</p>
+              </div>
+            ))}
           </div>
+
+          {/* Bottom bar */}
+          <div
+            style={{
+              height: '4px',
+              background: 'linear-gradient(90deg, #f97316 0%, #fb923c 60%, #fdba74 100%)',
+              borderRadius: '0 0 4px 4px',
+              marginTop: '20px',
+            }}
+          />
         </div>
       </div>
     </div>

@@ -45,7 +45,7 @@ export default function Login() {
       className="min-h-[100svh] flex"
       style={{ backgroundColor: '#f9fafb' }}
     >
-      {/* Left panel — branding */}
+      {/* Left panel  branding */}
       <div
         className="hidden lg:flex flex-col items-center justify-center flex-1 relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fdba74 100%)' }}
@@ -86,7 +86,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel  form */}
       <div className="flex flex-col items-center justify-center flex-1 p-6 md:p-12" style={{ maxWidth: '520px', margin: '0 auto' }}>
         {/* Mobile logo */}
         <div className="lg:hidden text-center mb-8">

@@ -42,10 +42,16 @@ export default function Modal({
   const btnSecondaryHover = isDark ? 'rgba(255,255,255,0.1)' : '#dfe3e8';
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+    <div 
+      className="p-3 sm:p-5"
+      style={{ 
+        position: 'fixed', inset: 0, zIndex: 99999, 
+        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+      }}
+    >
       {/* Backdrop */}
       <div
-        style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
+        style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
         onClick={onClose}
       />
 
@@ -54,6 +60,9 @@ export default function Modal({
         style={{
           position: 'relative', zIndex: 10,
           width: '100%', maxWidth: maxWidth || '440px',
+          maxHeight: 'min(86vh, 86svh)',
+          display: 'flex',
+          flexDirection: 'column',
           backgroundColor: bgColor,
           borderRadius: '16px',
           boxShadow: isDark 
@@ -65,13 +74,20 @@ export default function Modal({
       >
         {/* Top accent */}
         {danger && (
-          <div style={{ height: '4px', background: 'linear-gradient(90deg, #ff5630, #ffab00)' }} />
+          <div style={{ height: '4px', background: 'linear-gradient(90deg, #ff5630, #ffab00)', flexShrink: 0 }} />
         )}
         {!danger && (
-          <div style={{ height: '4px', background: 'linear-gradient(90deg, #f97316, #fdba74)' }} />
+          <div style={{ height: '4px', background: 'linear-gradient(90deg, #f97316, #fdba74)', flexShrink: 0 }} />
         )}
 
-        <div style={{ padding: '24px' }}>
+        <div 
+          className="p-4 sm:p-6 mobile-scroll"
+          style={{ 
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'contain',
+          }}
+        >
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

@@ -46,21 +46,23 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/40 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-30 flex flex-col
-                    transform transition-all duration-400
-                    ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        className={`fixed md:static inset-y-0 left-0 z-50 md:z-30 flex flex-col
+                    transform transition-all duration-300 ease-out
+                    w-[280px] md:w-[var(--sidebar-width)]
+                    ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}`}
         style={{ 
-          width: sidebarWidth, 
+          // On desktop (md:), width is overridden by CSS variable
+          ['--sidebar-width' as any]: sidebarWidth,
           backgroundColor: '#1c252e', 
           minHeight: '100vh',
+          height: '100%',
           borderRight: '1px dashed rgba(255,255,255,0.08)',
-          transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
         {/* ── Logo / Society Header ── */}
@@ -70,9 +72,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: sidebarCollapsed ? '0' : '0 20px',
+          padding: '0 16px',
         }}>
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} w-full`}>
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3 overflow-hidden">
               <div
                 className="flex items-center justify-center flex-shrink-0"
@@ -83,34 +85,32 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               >
                 <img src="/images/shri.png?v=orange" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
-              {!sidebarCollapsed && (
-                <div className="min-w-0 transition-all duration-300 ease-in-out">
-                  <p style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', lineHeight: 1.3 }} className="truncate">
-                    {language === 'mr' && societyName === 'Shri Sai Apartment' 
-                      ? 'श्री साई अपार्टमेंट' 
-                      : societyName}
-                  </p>
-                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
-                    {t('adminPortal')}
-                  </p>
-                </div>
-              )}
+              <div className={`min-w-0 transition-all duration-200 ${sidebarCollapsed ? 'md:hidden' : 'block'}`}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', lineHeight: 1.3 }} className="truncate">
+                  {language === 'mr' && societyName === 'Shri Sai Apartment' 
+                    ? 'श्री साई अपार्टमेंट' 
+                    : societyName}
+                </p>
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
+                  {t('adminPortal')}
+                </p>
+              </div>
             </div>
-            {!sidebarCollapsed && (
-              <button
-                className="md:hidden p-1.5 rounded-lg transition-colors"
-                style={{ color: 'rgba(255,255,255,0.4)' }}
-                onClick={() => setIsOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            )}
+            
+            {/* Mobile close drawer button */}
+            <button
+              className="md:hidden p-2 rounded-lg transition-colors hover:bg-white/10 active:scale-95"
+              style={{ color: 'rgba(255,255,255,0.7)', touchAction: 'manipulation' }}
+              onClick={() => setIsOpen(false)}
+              aria-label="Close menu"
+            >
+              <X size={20} />
+            </button>
           </div>
         </div>
 
-        {/* ── Quick Stats Card (Hidden when collapsed) ── */}
-        {!sidebarCollapsed && (
-          <div style={{ padding: '16px 12px 8px' }} className="animate-in fade-in duration-300">
+        {/* ── Quick Stats Card ── */}
+        <div style={{ padding: '16px 12px 8px' }} className={`animate-in fade-in duration-300 ${sidebarCollapsed ? 'md:hidden' : 'block'}`}>
             <div
               style={{
                 background: 'rgba(249, 115, 22,0.12)',
@@ -149,7 +149,6 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               </div>
             </div>
           </div>
-        )}
 
         {/* ── Navigation ── */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: '8px 12px' }}>
@@ -166,7 +165,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 end={item.to === '/'}
                 onClick={() => setIsOpen(false)}
                 className={({ isActive }) =>
-                  `nav-item ${isActive ? 'nav-item-active' : 'nav-item-inactive'} ${sidebarCollapsed ? 'justify-center px-0 gap-0' : ''}`
+                  `nav-item ${isActive ? 'nav-item-active' : 'nav-item-inactive'} ${sidebarCollapsed ? 'md:justify-center md:px-0 md:gap-0' : ''}`
                 }
                 title={sidebarCollapsed ? item.label : ''}
               >
@@ -178,15 +177,15 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                         color: isActive ? '#f97316' : 'rgba(255,255,255,0.45)', 
                         flexShrink: 0,
                         transition: 'transform 0.2s ease',
-                        margin: sidebarCollapsed ? '0 auto' : '0'
                       }}
-                      className={sidebarCollapsed ? 'scale-110' : ''}
+                      className={sidebarCollapsed ? 'md:scale-110 md:mx-auto' : ''}
                     />
-                    {!sidebarCollapsed && (
-                      <span style={{ color: isActive ? '#f97316' : 'rgba(255,255,255,0.65)', fontWeight: isActive ? 700 : 500 }} className="truncate">
-                        {item.label}
-                      </span>
-                    )}
+                    <span 
+                      style={{ color: isActive ? '#f97316' : 'rgba(255,255,255,0.65)', fontWeight: isActive ? 700 : 500 }} 
+                      className={`truncate ${sidebarCollapsed ? 'md:hidden' : 'block'}`}
+                    >
+                      {item.label}
+                    </span>
                   </>
                 )}
               </NavLink>
@@ -199,8 +198,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <div style={{ padding: '8px 12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 rounded-lg transition-all ${sidebarCollapsed ? 'justify-center px-0 gap-0' : ''}`}
-            style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.4)', fontSize: '14px', fontWeight: 600 }}
+            className={`w-full flex items-center gap-3 rounded-lg transition-all ${sidebarCollapsed ? 'md:justify-center md:px-0 md:gap-0' : ''}`}
+            style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.4)', fontSize: '14px', fontWeight: 600, touchAction: 'manipulation' }}
             title={sidebarCollapsed ? t('logout') : ''}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(255, 86, 48, 0.12)';
@@ -211,8 +210,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               e.currentTarget.style.color = 'rgba(255,255,255,0.4)';
             }}
           >
-            <LogOut size={18} className={sidebarCollapsed ? 'scale-110' : ''} />
-            {!sidebarCollapsed && <span>{t('logout')}</span>}
+            <LogOut size={18} className={sidebarCollapsed ? 'md:scale-110' : ''} />
+            <span className={sidebarCollapsed ? 'md:hidden' : 'block'}>{t('logout')}</span>
           </button>
         </div>
       </aside>

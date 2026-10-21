@@ -18,7 +18,7 @@ import { ReceiptService } from '../api/receipt.service';
 // Improved WhatsApp Brand Icon
 const WhatsAppBrandIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .018 5.396.015 12.03c0 2.12.554 4.189 1.605 6.006L0 24l6.117-1.605a11.845 11.845 0 005.928 1.586h.005c6.632 0 12.028-5.396 12.031-12.03a11.83 11.83 0 00-3.522-8.508z"/>
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .018 5.396.015 12.03c0 2.12.554 4.189 1.605 6.006L0 24l6.117-1.605a11.845 11.845 0 005.928 1.586h.005c6.632 0 12.028-5.396 12.031-12.03a11.83 11.83 0 00-3.522-8.508z" />
   </svg>
 );
 
@@ -38,15 +38,15 @@ export default function OwnerDetail() {
   const borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#f4f6f8';
 
   // --- Custom Month Picker Component ---
-  const MonthYearPicker = ({ 
-    label, value, onChange, minDate, existingPayments, allowFuture 
-  }: { 
+  const MonthYearPicker = ({
+    label, value, onChange, minDate, existingPayments, allowFuture
+  }: {
     label: string, value: string, onChange: (val: string) => void,
     minDate?: string, existingPayments: any[], allowFuture?: boolean
   }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [viewYear, setViewYear] = useState(parseInt(value.split('-')[0]));
-    
+
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentMonthIdx = parseInt(value.split('-')[1]) - 1;
     const currentYear = parseInt(value.split('-')[0]);
@@ -64,7 +64,7 @@ export default function OwnerDetail() {
       // Block any year below 2021
       if (viewYear < MIN_YEAR) return true;
 
-      // Future validation — only block future months when allowFuture is NOT set
+      // Future validation  only block future months when allowFuture is NOT set
       if (!allowFuture) {
         if (viewYear > todayYear || (viewYear === todayYear && idx > todayMonthIdx)) return true;
       }
@@ -78,7 +78,7 @@ export default function OwnerDetail() {
         if (toValue < fromValue) return true;
       }
 
-      // Payment history validation — only for non-future months
+      // Payment history validation  only for non-future months
       const d = new Date(dateStr + '-01');
       const alreadyPaid = existingPayments.some(p => {
         if (p.status !== 'paid') return false;
@@ -102,10 +102,10 @@ export default function OwnerDetail() {
     return (
       <div style={{ position: 'relative' }}>
         <label className="label">{label}</label>
-        <div 
+        <div
           onClick={() => setIsOpen(!isOpen)}
           className="input-field"
-          style={{ 
+          style={{
             paddingLeft: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center',
             borderColor: isOpen ? '#f97316' : undefined,
             boxShadow: isOpen ? '0 0 0 3px rgba(249, 115, 22, 0.16)' : undefined,
@@ -121,24 +121,24 @@ export default function OwnerDetail() {
 
         {isOpen && (
           <>
-            <div 
-              onClick={() => setIsOpen(false)} 
-              style={{ position: 'fixed', inset: 0, zIndex: 998 }} 
+            <div
+              onClick={() => setIsOpen(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 998 }}
             />
-            <div style={{ 
+            <div style={{
               position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 999,
-              width: '260px', backgroundColor: cardBg, borderRadius: '16px',
+              width: '260px', maxWidth: 'calc(100vw - 32px)', backgroundColor: cardBg, borderRadius: '16px',
               boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.4)' : '0 12px 32px rgba(145, 158, 171, 0.2)',
               border: `1px solid ${borderColor}`,
               padding: '16px', overflow: 'hidden', animation: 'modalIn 0.2s ease both'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <button 
+                <button
                   type="button"
                   onClick={() => setViewYear(v => v - 1)}
                   disabled={viewYear <= 2021}
-                  style={{ 
-                    width: '32px', height: '32px', borderRadius: '8px', 
+                  style={{
+                    width: '32px', height: '32px', borderRadius: '8px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f4f6f8',
                     border: 'none', color: textSecondary,
@@ -149,15 +149,15 @@ export default function OwnerDetail() {
                   <ChevronLeft size={16} />
                 </button>
                 <span style={{ fontWeight: 800, color: textPrimary, fontSize: '16px' }}>{viewYear}</span>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setViewYear(v => v + 1)}
                   disabled={!allowFuture && viewYear >= todayYear}
-                  style={{ 
-                    width: '32px', height: '32px', borderRadius: '8px', 
+                  style={{
+                    width: '32px', height: '32px', borderRadius: '8px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f4f6f8',
-                    border: 'none', color: textSecondary, 
+                    border: 'none', color: textSecondary,
                     cursor: (!allowFuture && viewYear >= todayYear) ? 'not-allowed' : 'pointer',
                     opacity: (!allowFuture && viewYear >= todayYear) ? 0.3 : 1
                   }}
@@ -234,7 +234,7 @@ export default function OwnerDetail() {
       }
     };
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const isShop = isShopUnit(owner?.flat);
@@ -276,7 +276,7 @@ export default function OwnerDetail() {
 
   const handleDownloadReceipt = async (payment: typeof ownerPayments[0]) => {
     if (payment.status !== 'paid') {
-      toast('No receipt available — payment is not marked as paid.', 'error');
+      toast('No receipt available  payment is not marked as paid.', 'error');
       return;
     }
     try {
@@ -550,7 +550,7 @@ export default function OwnerDetail() {
 
   const handleMarkAsPaid = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate amount
     if (!paymentAmount || paymentAmount <= 0) {
       toast('Amount cannot be zero or empty.', 'error');
@@ -568,7 +568,7 @@ export default function OwnerDetail() {
       toast('From Month cannot be a future month.', 'error');
       return;
     }
-    
+
     if (startKey > endKey) {
       toast('From Month cannot be after To Month', 'error');
       return;
@@ -618,7 +618,7 @@ export default function OwnerDetail() {
     const rcpNum = nextReceiptNumber();
     useStore.setState((s) => ({ receiptCounter: s.receiptCounter + 1 }));
     const tempPayment = {
-      id: '',  // placeholder — will be replaced with real backend ID after fetch
+      id: '',  // placeholder  will be replaced with real backend ID after fetch
       ownerId: owner.id, month: period,
       amount: Number(paymentAmount), paidOn: new Date().toISOString(),
       receiptNumber: rcpNum, status: 'paid' as const,
@@ -635,8 +635,8 @@ export default function OwnerDetail() {
       // Pick the payment that best matches: same fromDate month
       const matched = freshOwnerPayments.find((p) => {
         const monthStr = p.month || '';
-        return monthStr.includes(format(start, 'MMM yyyy')) || 
-               monthStr.startsWith(format(start, 'MMMM yyyy'));
+        return monthStr.includes(format(start, 'MMM yyyy')) ||
+          monthStr.startsWith(format(start, 'MMMM yyyy'));
       }) || freshOwnerPayments[freshOwnerPayments.length - 1];
       setLastPayment(matched || null);
       toast(t('paymentConfirmed'), 'success');
@@ -657,7 +657,7 @@ export default function OwnerDetail() {
   };
   const sendWhatsApp = async (payment: typeof ownerPayments[0]) => {
     if (payment.status !== 'paid') {
-      toast('No receipt available — payment is not marked as paid.', 'error');
+      toast('No receipt available  payment is not marked as paid.', 'error');
       return;
     }
 
@@ -669,15 +669,15 @@ export default function OwnerDetail() {
 
     const msgText = `Dear ${owner.name} (Flat ${owner.flat}),\n\nYour society maintenance has been received successfully.\n\nPeriod: ${payment.month}\nAmount Paid: ₹${payment.amount.toLocaleString('en-IN')}\n\nThank you!\n${societyName}`;
     const encodedText = encodeURIComponent(msgText);
-    
+
     // Detect mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
+
     const triggerWhatsAppRedirect = () => {
       if (isMobile) {
         // Direct native app scheme
         window.location.href = `whatsapp://send?phone=${e164Phone}&text=${encodedText}`;
-        
+
         // Fallback: If custom scheme isn't handled within 300ms, redirect to the universal api link
         setTimeout(() => {
           window.open(`https://api.whatsapp.com/send?phone=${e164Phone}&text=${encodedText}`, '_blank');
@@ -708,14 +708,14 @@ export default function OwnerDetail() {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
-            title: `Receipt — ${payment.receiptNumber}`,
+            title: `Receipt  ${payment.receiptNumber}`,
             text: msgText,
             files: [file],
           });
           toast('Receipt shared successfully!', 'success');
           return;
         } catch (shareErr: any) {
-          if (shareErr?.name === 'AbortError') return; // User dismissed — not an error
+          if (shareErr?.name === 'AbortError') return; // User dismissed  not an error
           // Fall through to wa.me redirect
         }
       }
@@ -781,11 +781,11 @@ export default function OwnerDetail() {
               {language === 'mr' && owner.nameMr ? owner.nameMr : owner.name}
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-              <span 
+              <span
                 style={{
-                  fontSize: '11px', 
-                  fontWeight: 800, 
-                  padding: '3px 8px', 
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  padding: '3px 8px',
                   borderRadius: '6px',
                   backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.08)',
                   color: '#f97316',
@@ -907,11 +907,11 @@ export default function OwnerDetail() {
                     <div>
                       <p style={{ fontSize: '11px', color: textSecondary, marginBottom: '2px' }}>{label}</p>
                       {label === t('flat') ? (
-                        <span 
+                        <span
                           style={{
-                            fontSize: '12px', 
-                            fontWeight: 800, 
-                            padding: '4px 10px', 
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            padding: '4px 10px',
                             borderRadius: '6px',
                             backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.08)',
                             color: '#f97316',
@@ -968,18 +968,18 @@ export default function OwnerDetail() {
               </h2>
               <form onSubmit={handleMarkAsPaid} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <MonthYearPicker 
-                    label={t('fromMonth')} 
-                    value={paymentFromDate} 
+                  <MonthYearPicker
+                    label={t('fromMonth')}
+                    value={paymentFromDate}
                     onChange={(val) => {
                       setPaymentFromDate(val);
                       if (paymentToDate < val) setPaymentToDate(val);
                     }}
                     existingPayments={ownerPayments}
                   />
-                  <MonthYearPicker 
-                    label={t('toMonth')} 
-                    value={paymentToDate} 
+                  <MonthYearPicker
+                    label={t('toMonth')}
+                    value={paymentToDate}
                     onChange={setPaymentToDate}
                     minDate={paymentFromDate}
                     existingPayments={ownerPayments}
@@ -1062,11 +1062,11 @@ export default function OwnerDetail() {
                     <div key={label}>
                       <p style={{ fontSize: '11px', color: textSecondary, marginBottom: '3px' }}>{label}</p>
                       {label === t('flat') ? (
-                        <span 
+                        <span
                           style={{
-                            fontSize: '12px', 
-                            fontWeight: 800, 
-                            padding: '4px 10px', 
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            padding: '4px 10px',
                             borderRadius: '6px',
                             backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : 'rgba(249, 115, 22, 0.08)',
                             color: '#f97316',
@@ -1470,8 +1470,8 @@ export default function OwnerDetail() {
                   </div>
                 ) : (
                   <>
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                    <div className="table-responsive" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '560px' }}>
                         <thead>
                           <tr>
                             <th className="table-th">Receipt No</th>

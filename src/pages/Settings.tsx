@@ -11,8 +11,8 @@ const SectionCard = ({
   title: string; subtitle: string; children: React.ReactNode;
   cardBg: string; textPrimary: string; textSecondary: string; borderColor: string; cardShadow: string;
 }) => (
-  <div style={{ backgroundColor: cardBg, borderRadius: '12px', padding: '24px', boxShadow: cardShadow }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px', paddingBottom: '18px', borderBottom: `1px solid ${borderColor}` }}>
+  <div className="p-4 sm:p-6" style={{ backgroundColor: cardBg, borderRadius: '12px', boxShadow: cardShadow }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px', paddingBottom: '16px', borderBottom: `1px solid ${borderColor}` }}>
       <div style={{
         width: '40px', height: '40px', borderRadius: '10px',
         backgroundColor: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -34,15 +34,16 @@ const ToggleBtn = ({
   <button
     id={id}
     onClick={onClick}
+    className="transition-all active:scale-[0.98]"
     style={{
       flex: 1,
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-      padding: '11px 16px', borderRadius: '8px', cursor: 'pointer',
-      fontSize: '14px', fontWeight: 700,
+      padding: '11px 14px', borderRadius: '8px', cursor: 'pointer',
+      fontSize: '13px', fontWeight: 700,
       border: `2px solid ${active ? '#f97316' : (isDark ? 'rgba(255,255,255,0.08)' : '#dfe3e8')}`,
       backgroundColor: active ? 'rgba(249, 115, 22,0.1)' : 'transparent',
       color: active ? '#f97316' : textSecondary,
-      transition: 'all 0.15s ease',
+      touchAction: 'manipulation',
     }}
   >
     {children}
@@ -180,7 +181,7 @@ export default function Settings() {
           </div>
           <div>
             <p style={{ fontSize: '14px', fontWeight: 700, color: textPrimary }}>Society Management System</p>
-            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>Version 1.0.0 — Shri Sai Apartment</p>
+            <p style={{ fontSize: '12px', color: textSecondary, marginTop: '2px' }}>Version 1.0.0  Shri Sai Apartment</p>
           </div>
         </div>
         <span style={{

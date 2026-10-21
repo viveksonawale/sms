@@ -101,11 +101,11 @@ export default function AddOwner() {
         {/* Card top accent */}
         <div style={{ height: '4px', background: 'linear-gradient(90deg, #ea580c, #f97316, #fdba74)' }} />
 
-        <div style={{ padding: '28px' }}>
+        <div className="p-4 sm:p-7">
           {/* Card header */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '14px',
-            paddingBottom: '20px', marginBottom: '24px',
+            paddingBottom: '16px', marginBottom: '20px',
             borderBottom: `1px solid ${borderColor}`,
           }}>
             <div style={{
@@ -194,19 +194,17 @@ export default function AddOwner() {
             </div>
 
             {/* Actions */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px',
-              paddingTop: '24px', marginTop: '8px',
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-6 mt-2" style={{
               borderTop: `1px solid ${borderColor}`,
             }}>
               <button
                 type="button"
                 onClick={() => navigate('/owners')}
-                className="btn-ghost"
+                className="btn-ghost w-full sm:w-auto justify-center"
               >
                 {t('cancel')}
               </button>
-              <button type="submit" className="btn-primary" disabled={submitting}>
+              <button type="submit" className="btn-primary w-full sm:w-auto justify-center" disabled={submitting}>
                 <UserPlus size={15} />
                 {submitting ? 'Saving...' : `${t('save')} Owner`}
               </button>

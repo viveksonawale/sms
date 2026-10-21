@@ -138,7 +138,7 @@ export default function Warnings() {
               left: align === 'left' ? 0 : 'auto',
               right: align === 'right' ? 0 : 'auto',
               zIndex: 999,
-              width: '260px', backgroundColor: cardBg, borderRadius: '16px',
+              width: '260px', maxWidth: 'calc(100vw - 32px)', backgroundColor: cardBg, borderRadius: '16px',
               boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.4)' : '0 12px 32px rgba(145, 158, 171, 0.2)',
               border: `1px solid ${borderColor}`,
               padding: '16px', overflow: 'hidden', animation: 'modalIn 0.2s ease both'
@@ -602,14 +602,15 @@ export default function Warnings() {
             <button
               disabled={!customMessage}
               onClick={handleCopy}
-              className="flex-1 flex justify-center items-center gap-2 rounded-xl transition-all"
+              className="flex-1 flex justify-center items-center gap-2 rounded-xl transition-all active:scale-[0.98]"
               style={{
                 backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#f4f6f8',
                 color: textPrimary,
                 padding: '12px',
                 fontWeight: 600, fontSize: '14px',
                 opacity: !customMessage ? 0.5 : 1,
-                cursor: !customMessage ? 'not-allowed' : 'pointer'
+                cursor: !customMessage ? 'not-allowed' : 'pointer',
+                touchAction: 'manipulation',
               }}
             >
               {copied ? <CheckCircle2 size={18} color="#00a76f" /> : <Copy size={18} />}
@@ -619,7 +620,7 @@ export default function Warnings() {
             <button
               disabled={!customMessage}
               onClick={handleSendWhatsApp}
-              className="flex-1 flex justify-center items-center gap-2 rounded-xl transition-all"
+              className="flex-1 flex justify-center items-center gap-2 rounded-xl transition-all active:scale-[0.98]"
               style={{
                 border: '1px solid rgba(37,211,102,0.4)',
                 backgroundColor: isDark ? 'rgba(37,211,102,0.08)' : 'rgba(37,211,102,0.05)',
@@ -627,7 +628,8 @@ export default function Warnings() {
                 padding: '12px',
                 fontWeight: 700, fontSize: '14px',
                 opacity: !customMessage ? 0.5 : 1,
-                cursor: !customMessage ? 'not-allowed' : 'pointer'
+                cursor: !customMessage ? 'not-allowed' : 'pointer',
+                touchAction: 'manipulation',
               }}
               onMouseEnter={(e) => {
                 if (customMessage) {
